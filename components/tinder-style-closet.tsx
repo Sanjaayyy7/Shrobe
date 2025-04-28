@@ -9,21 +9,21 @@ import Link from "next/link"
 const trendingClosetItems = [
   {
     id: 1,
-    image: "/images/uploads/fashion-coastal-sunset.jpg", // First image (person sitting on rocks at sunset)
-    name: "Coastal Knit Ensemble",
-    description: "Relaxed cream knit cardigan with white wide-leg pants for beach-side evenings",
-    likes: 3428,
-    owner: "sophia.style",
-    tags: ["Casual", "Bohemian", "Evening"],
-  },
-  {
-    id: 2,
-    image: "/images/uploads/fashion-red-sequin.jpg", // Second image (woman in red sequin dress)
+    image: "/images/uploads/fashion-coastal-sunset.jpg", // Red sequin dress
     name: "Red Sequin Gown",
     description: "Statement floor-length sequin dress with slim straps for special occasions",
     likes: 2941,
     owner: "sophia.style",
     tags: ["Evening", "Formal", "Statement"],
+  },
+  {
+    id: 2,
+    image: "/images/uploads/fashion-red-sequin.jpg", // Person sitting on rocks at sunset
+    name: "Coastal Knit Ensemble",
+    description: "Relaxed cream knit cardigan with white wide-leg pants for beach-side evenings",
+    likes: 3428,
+    owner: "sophia.style",
+    tags: ["Casual", "Bohemian", "Evening"],
   },
   {
     id: 3,
