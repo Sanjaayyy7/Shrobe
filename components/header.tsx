@@ -52,7 +52,7 @@ export default function Header() {
                 <span className="block h-0.5 w-0 group-hover:w-full transition-all duration-300 bg-gradient-to-r from-primary-pink to-primary-purple rounded-full mx-auto"></span>
               </Link>
             </li>
-            <li>
+            {/*<li>
               <Link href="#closets" className="font-medium text-base hover:text-primary-pink transition-colors relative group">
                 <span className="pb-1">Browse Closets</span>
                 <span className="block h-0.5 w-0 group-hover:w-full transition-all duration-300 bg-gradient-to-r from-primary-pink to-primary-purple rounded-full mx-auto"></span>
@@ -63,9 +63,9 @@ export default function Header() {
                 <span className="pb-1">Categories</span>
                 <span className="block h-0.5 w-0 group-hover:w-full transition-all duration-300 bg-gradient-to-r from-primary-pink to-primary-purple rounded-full mx-auto"></span>
               </Link>
-            </li>
+            </li>*/}
             <li>
-              <Link href="#how-it-works" className="font-medium text-base hover:text-primary-pink transition-colors relative group">
+              <Link href="/how-works" className="font-medium text-base hover:text-primary-pink transition-colors relative group">
                 <span className="pb-1">How It Works</span>
                 <span className="block h-0.5 w-0 group-hover:w-full transition-all duration-300 bg-gradient-to-r from-primary-pink to-primary-purple rounded-full mx-auto"></span>
               </Link>
@@ -103,7 +103,7 @@ export default function Header() {
               <Link href="#categories" onClick={() => setMenuOpen(false)} className="block w-full text-center py-2 px-8 hover:text-primary-pink transition-colors">Categories</Link>
             </li>
             <li>
-              <Link href="#how-it-works" onClick={() => setMenuOpen(false)} className="block w-full text-center py-2 px-8 hover:text-primary-pink transition-colors">How It Works</Link>
+              <Link href="/how-works" onClick={() => setMenuOpen(false)} className="block w-full text-center py-2 px-8 hover:text-primary-pink transition-colors">How It Works</Link>
             </li>
             <li>
               <Link href="/signup" onClick={() => setMenuOpen(false)} className="block w-full text-center py-3 px-10 rounded-full bg-gradient-to-r from-primary-pink to-primary-purple text-white shadow-md hover:from-primary-purple hover:to-primary-pink transition-all duration-300 border-0">Sign In</Link>
