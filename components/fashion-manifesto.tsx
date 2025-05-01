@@ -28,7 +28,7 @@ export default function FashionManifesto() {
           loading="eager"
         />
       </div>
-      
+
       <div className="container mx-auto px-4 relative z-10">
         {/* Section header with animated underline */}
         <div className="text-center mb-20">
@@ -144,7 +144,7 @@ export default function FashionManifesto() {
               />
             </motion.div>
           </motion.div>
-        </div>
+          </div>
 
         {/* Key Pillars */}
         <motion.h3
@@ -197,7 +197,7 @@ export default function FashionManifesto() {
             <p className="text-gray-300">
               Rent it. Trade it. Flex it. Your closet is your canvas.
             </p>
-          </motion.div>
+        </motion.div>
         </div>
       </div>
     </section>

@@ -4,41 +4,53 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 
+// Shimmer loading animation component
+const ShimmerEffect = () => (
+  <div className="w-full h-full bg-gradient-to-r from-gray-800/30 via-gray-700/30 to-gray-800/30 bg-[length:400%_100%] animate-shimmer"></div>
+);
+
 const outfits = [
   {
     id: 1,
     title: "Vintage Denim",
     description: "Classic denim with a modern twist",
     image: "/images/outfit-vintage-denim.jpg",
+    fallback: "/images/uploads/fashion-festival-outfit.jpg",
   },
   {
     id: 2,
     title: "Eco Essentials",
     description: "Sustainable everyday staples",
     image: "/images/outfit-eco-essentials.jpg",
+    fallback: "/images/uploads/fashion-coastal-sunset.jpg",
   },
   {
     id: 3,
     title: "Upcycled Chic",
     description: "Creative reuse and stylish design",
     image: "/images/outfit-upcycled-chic.jpg",
+    fallback: "/images/uploads/fashion-red-sequin.jpg",
   },
   {
     id: 4,
     title: "Sustainable Luxury",
     description: "Eco-conscious premium fashion",
     image: "/images/outfit-sustainable-luxury.jpg",
+    fallback: "/images/uploads/fashion-western-inspired.jpg",
   },
   {
     id: 5,
     title: "Minimalist Style",
     description: "Clean lines and essential pieces",
     image: "/images/outfit-minimalist.jpg",
+    fallback: "/images/uploads/fashion-festival-outfit.jpg",
   },
 ]
 
 export default function OutfitCarousel() {
   const [activeIndex, setActiveIndex] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+  const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({})
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -46,6 +58,14 @@ export default function OutfitCarousel() {
     }, 3000)
     return () => clearInterval(interval)
   }, [])
+
+  const handleImageLoad = () => {
+    setIsLoading(false)
+  }
+
+  const handleImageError = (id: number) => {
+    setImageErrors(prev => ({ ...prev, [id]: true }))
+  }
 
   return (
     <div className="relative w-full py-12 bg-black overflow-hidden">
@@ -92,8 +112,8 @@ export default function OutfitCarousel() {
                   <button
                     key={index}
                     onClick={() => setActiveIndex(index)}
-                    className={`w-2 h-2 rounded-full transition-all ${
-                      index === activeIndex ? "bg-primary-pink w-6" : "bg-white/30"
+                    className={`h-3 rounded-full transition-all duration-300 ${
+                      index === activeIndex ? "bg-primary-pink w-8" : "bg-white/50 w-3 hover:bg-white/70"
                     }`}
                     aria-label={`View outfit ${index + 1}`}
                   />
@@ -113,6 +133,7 @@ export default function OutfitCarousel() {
                   const isPrev = position === outfits.length - 1
                   const isNext = position === 1
                   const isHidden = !isActive && !isPrev && !isNext
+                  const usesFallback = imageErrors[outfit.id]
 
                   return (
                     <motion.div
@@ -135,13 +156,19 @@ export default function OutfitCarousel() {
                           isActive ? "w-[300px] h-[450px]" : "w-[200px] h-[300px]"
                         }`}
                       >
+                        {isLoading && isActive && <ShimmerEffect />}
+                        
                         <Image
-                          src={outfit.image || "/placeholder.svg"}
+                          src={usesFallback ? outfit.fallback : outfit.image}
                           alt={outfit.title}
                           fill
                           className="object-cover"
                           sizes={isActive ? "300px" : "200px"}
+                          onLoad={handleImageLoad}
+                          onError={() => handleImageError(outfit.id)}
+                          priority={isActive}
                         />
+                        
                         {isActive && (
                           <motion.div
                             className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6"
