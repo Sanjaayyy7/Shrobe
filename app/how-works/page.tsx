@@ -90,12 +90,9 @@ export default function HowWorksPage() {
               <p className="text-xl text-gray-300 mb-6">
                 Ready to showcase your unique style to the world?
               </p>
-              <a 
-                href="/signup" 
-                className="inline-block px-8 py-3 rounded-full bg-gradient-to-r from-primary-pink to-primary-purple text-white font-medium text-lg hover:from-primary-purple hover:to-primary-pink transition-all duration-300 shadow-lg shadow-primary-pink/20"
-              >
-                Get Started Now
-              </a>
+              <p>
+                Sign up now and start building your digital closet!
+              </p>
             </motion.div>
           </div>
         </section>

@@ -53,7 +53,7 @@ export default function Header() {
               </Link>
             </li>
             {/*<li>
-              <Link href="#closets" className="font-medium text-base hover:text-primary-pink transition-colors relative group">
+              <Link href="/closets" className="font-medium text-base hover:text-primary-pink transition-colors relative group">
                 <span className="pb-1">Browse Closets</span>
                 <span className="block h-0.5 w-0 group-hover:w-full transition-all duration-300 bg-gradient-to-r from-primary-pink to-primary-purple rounded-full mx-auto"></span>
               </Link>
