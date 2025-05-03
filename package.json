@@ -1,5 +1,5 @@
 {
-  "name": "shrobe",
+  "name": "my-v0-project",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -47,6 +47,7 @@
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
     "date-fns": "^4.1.0",
+
     "embla-carousel-react": "8.5.1",
     "expo": "latest",
     "expo-asset": "latest",
@@ -67,6 +68,7 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "three": "latest",
+
     "zod": "^3.24.1"
   },
   "devDependencies": {
@@ -79,5 +81,6 @@
     "eslint": "^9",
     "eslint-config-next": "15.3.1",
     "@eslint/eslintrc": "^3"
+
   }
 }
