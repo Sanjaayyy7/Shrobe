@@ -19,12 +19,34 @@ export default function FeedPage() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        console.log("Checking authentication status...")
         setIsLoading(true)
-        const { data: { session } } = await supabase.auth.getSession()
         
-        if (!session) {
+        // Check for demo mode login
+        const demoUser = typeof window !== 'undefined' ? localStorage.getItem('shrobe_demo_user') : null
+        
+        if (demoUser) {
+          console.log("Demo user found in local storage")
+          setIsAuthenticated(true)
+          setIsLoading(false)
+          return
+        }
+        
+        // Proceed with real authentication
+        const { data, error } = await supabase.auth.getSession()
+        
+        console.log("Auth session response:", { data, error })
+        
+        if (error) {
+          console.error("Session error:", error)
+          return
+        }
+        
+        if (!data.session) {
+          console.log("No active session, redirecting to login")
           router.push("/login")
         } else {
+          console.log("User authenticated:", data.session.user.email)
           setIsAuthenticated(true)
         }
       } catch (error) {
