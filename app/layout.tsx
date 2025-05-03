@@ -3,7 +3,6 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import Header from "@/components/header"
-import DebugSupabaseConnection from "@/components/debug-supabase-connection"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -25,8 +24,6 @@ export default function RootLayout({
         <main>
           {children}
         </main>
-        {/* Debug component to help diagnose Supabase connection issues */}
-        <DebugSupabaseConnection />
       </body>
     </html>
   )

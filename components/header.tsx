@@ -75,11 +75,6 @@ export default function Header() {
                 Sign In
               </Link>
             </li>
-            <li className="ml-4">
-              <Link href="/signup" className="font-semibold text-base px-6 py-2 rounded-full bg-gradient-to-r from-primary-pink to-primary-purple text-white shadow-md hover:from-primary-purple hover:to-primary-pink transition-all duration-300 border-0">
-                Sign Up
-              </Link>
-            </li>
           </ul>
         </nav>
         {/* Hamburger for mobile */}
@@ -112,9 +107,6 @@ export default function Header() {
             </li>
             <li>
               <Link href="/login" onClick={() => setMenuOpen(false)} className="block w-full text-center py-3 px-10 rounded-full bg-gradient-to-r from-primary-pink to-primary-purple text-white shadow-md hover:from-primary-purple hover:to-primary-pink transition-all duration-300 border-0">Sign In</Link>
-            </li>
-            <li className="pt-4">
-              <Link href="/signup" onClick={() => setMenuOpen(false)} className="block w-full text-center py-3 px-10 rounded-full bg-gradient-to-r from-primary-pink to-primary-purple text-white shadow-md hover:from-primary-purple hover:to-primary-pink transition-all duration-300 border-0">Sign Up</Link>
             </li>
           </ul>
         </nav>
