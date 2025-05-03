@@ -28,8 +28,8 @@ export default function LoginPage() {
       }
 
       if (data?.user) {
-        // Redirect to closet page on successful login
-        router.push('/closet')
+        // Redirect to feed page on successful login
+        router.push('/feed')
       }
     } catch (error: any) {
       setError(error.message || 'An error occurred during sign in')
