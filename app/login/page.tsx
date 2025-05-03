@@ -5,34 +5,20 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 
-export default function SignupPage() {
+export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
-    // Basic validation
-    if (password !== confirmPassword) {
-      setError('Passwords do not match')
-      setLoading(false)
-      return
-    }
-
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters')
-      setLoading(false)
-      return
-    }
-
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
@@ -42,16 +28,11 @@ export default function SignupPage() {
       }
 
       if (data?.user) {
-        // Check if email confirmation is required
-        if (data.user.identities && data.user.identities.length === 0) {
-          setError('This email is already registered')
-        } else {
-          // Redirect to closet page on successful signup
-          router.push('/closet')
-        }
+        // Redirect to closet page on successful login
+        router.push('/closet')
       }
     } catch (error: any) {
-      setError(error.message || 'An error occurred during sign up')
+      setError(error.message || 'An error occurred during sign in')
     } finally {
       setLoading(false)
     }
@@ -62,20 +43,20 @@ export default function SignupPage() {
       <div className="max-w-md w-full space-y-8 bg-black/60 backdrop-blur-lg p-8 rounded-2xl border border-white/10 shadow-2xl">
         <div>
           <h2 className="mt-2 text-center text-3xl font-extrabold text-white">
-            Create your account
+            Sign in to your account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-300">
-            Already have an account?{' '}
+            Don't have an account?{' '}
             <Link 
-              href="/login" 
+              href="/signup" 
               className="font-medium text-primary-pink hover:text-primary-purple transition-colors"
             >
-              Sign in instead
+              Create one now
             </Link>
           </p>
         </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleSignup}>
+        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
           <div className="rounded-md space-y-4">
             <div>
               <label htmlFor="email-address" className="sr-only">
@@ -101,28 +82,12 @@ export default function SignupPage() {
                 id="password"
                 name="password"
                 type="password"
-                autoComplete="new-password"
+                autoComplete="current-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="appearance-none relative block w-full px-4 py-3 border border-white/20 placeholder-gray-400 text-white rounded-lg bg-black/40 focus:outline-none focus:ring-2 focus:ring-primary-pink focus:border-transparent sm:text-sm"
                 placeholder="Password"
-              />
-            </div>
-            <div>
-              <label htmlFor="confirm-password" className="sr-only">
-                Confirm Password
-              </label>
-              <input
-                id="confirm-password"
-                name="confirm-password"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="appearance-none relative block w-full px-4 py-3 border border-white/20 placeholder-gray-400 text-white rounded-lg bg-black/40 focus:outline-none focus:ring-2 focus:ring-primary-pink focus:border-transparent sm:text-sm"
-                placeholder="Confirm Password"
               />
             </div>
           </div>
@@ -149,15 +114,20 @@ export default function SignupPage() {
               disabled={loading}
               className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-primary-pink to-primary-purple hover:from-primary-purple hover:to-primary-pink focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-pink disabled:opacity-50 transition-all duration-300 shadow-md"
             >
-              {loading ? 'Creating account...' : 'Create Account'}
+              {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
           
-          <div className="text-xs text-center text-gray-400">
-            By signing up, you agree to our Terms of Service and Privacy Policy.
+          <div className="text-center">
+            <Link 
+              href="#" 
+              className="font-medium text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              Forgot your password?
+            </Link>
           </div>
         </form>
       </div>
     </div>
   )
-}
+} 

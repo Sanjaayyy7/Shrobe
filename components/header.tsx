@@ -70,9 +70,14 @@ export default function Header() {
                 <span className="block h-0.5 w-0 group-hover:w-full transition-all duration-300 bg-gradient-to-r from-primary-pink to-primary-purple rounded-full mx-auto"></span>
               </Link>
             </li>
-            <li className="ml-6">
-              <Link href="/signup" className="font-semibold text-base px-6 py-2 rounded-full bg-gradient-to-r from-primary-pink to-primary-purple text-white shadow-md hover:from-primary-purple hover:to-primary-pink transition-all duration-300 border-0">
+            <li>
+              <Link href="/login" className="font-semibold text-base px-6 py-2 rounded-full bg-gradient-to-r from-primary-pink to-primary-purple text-white shadow-md hover:from-primary-purple hover:to-primary-pink transition-all duration-300 border-0">
                 Sign In
+              </Link>
+            </li>
+            <li>
+              <Link href="/signup" className="font-semibold text-base px-6 py-2 ml-4 rounded-full bg-transparent hover:bg-white/10 text-white border border-white/30 transition-all duration-300">
+                Sign Up
               </Link>
             </li>
           </ul>
@@ -106,7 +111,10 @@ export default function Header() {
               <Link href="/how-works" onClick={() => setMenuOpen(false)} className="block w-full text-center py-2 px-8 hover:text-primary-pink transition-colors">How It Works</Link>
             </li>
             <li>
-              <Link href="/signup" onClick={() => setMenuOpen(false)} className="block w-full text-center py-3 px-10 rounded-full bg-gradient-to-r from-primary-pink to-primary-purple text-white shadow-md hover:from-primary-purple hover:to-primary-pink transition-all duration-300 border-0">Sign In</Link>
+              <Link href="/login" onClick={() => setMenuOpen(false)} className="block w-full text-center py-3 px-10 rounded-full bg-gradient-to-r from-primary-pink to-primary-purple text-white shadow-md hover:from-primary-purple hover:to-primary-pink transition-all duration-300 border-0">Sign In</Link>
+            </li>
+            <li>
+              <Link href="/signup" onClick={() => setMenuOpen(false)} className="block w-full text-center py-3 px-10 rounded-full bg-transparent hover:bg-white/10 text-white border border-white/30 transition-all duration-300">Sign Up</Link>
             </li>
           </ul>
         </nav>
