@@ -46,8 +46,8 @@ export default function SignupPage() {
         if (data.user.identities && data.user.identities.length === 0) {
           setError('This email is already registered')
         } else {
-          // Redirect to closet page on successful signup
-          router.push('/closet')
+          // Redirect to feed page on successful signup
+          router.push('/feed')
         }
       }
     } catch (error: any) {

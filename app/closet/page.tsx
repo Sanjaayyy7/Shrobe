@@ -2,6 +2,7 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
 import Image from 'next/image'
+import { redirect } from 'next/navigation'
 
 // Define types
 type Item = {
@@ -25,20 +26,7 @@ export default async function ClosetPage() {
   const { data: { user } } = await supabase.auth.getUser()
   
   if (!user) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Not logged in</h1>
-          <p className="text-lg text-gray-600 mb-8">Please sign in to view your closet</p>
-          <Link
-            href="/login"
-            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-pink-600 hover:bg-pink-700"
-          >
-            Sign In
-          </Link>
-        </div>
-      </div>
-    )
+    redirect('/login')
   }
   
   // Fetch user's wardrobes with associated items

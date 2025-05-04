@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { supabase, getSupabaseConfig } from '@/lib/supabase'
 import Link from 'next/link'
 
 export default function LoginPage() {
@@ -11,27 +11,55 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [supabaseConnected, setSupabaseConnected] = useState(true)
+
+  // Check if Supabase is properly configured
+  useEffect(() => {
+    const config = getSupabaseConfig()
+    if (!config.url || !config.hasKey) {
+      console.error('Supabase configuration missing. URL or Key not set.')
+      setSupabaseConnected(false)
+      setError('Supabase configuration is incomplete. Please check your environment variables.')
+    }
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
+    if (!supabaseConnected) {
+      setError('Cannot connect to authentication service. Please try again later.')
+      setLoading(false)
+      return
+    }
+
     try {
+      console.log('Attempting to sign in with:', email)
+      
+      // Use Supabase's auth.signInWithPassword method
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (error) {
-        throw error
+        console.error('Authentication error:', error)
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Invalid email or password. Please try again.')
+        } else {
+          throw error
+        }
       }
 
       if (data?.user) {
-        // Redirect to closet page on successful login
-        router.push('/closet')
+        console.log('Login successful, redirecting to feed')
+        router.push('/feed')
+      } else {
+        throw new Error('Successfully authenticated but no user data found')
       }
     } catch (error: any) {
+      console.error('Login error:', error)
       setError(error.message || 'An error occurred during sign in')
     } finally {
       setLoading(false)
@@ -56,7 +84,7 @@ export default function LoginPage() {
           </p>
         </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+        <form className="mt-6 space-y-6" onSubmit={handleLogin}>
           <div className="rounded-md space-y-4">
             <div>
               <label htmlFor="email-address" className="sr-only">
@@ -111,7 +139,7 @@ export default function LoginPage() {
           <div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !supabaseConnected}
               className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-primary-pink to-primary-purple hover:from-primary-purple hover:to-primary-pink focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-pink disabled:opacity-50 transition-all duration-300 shadow-md"
             >
               {loading ? 'Signing in...' : 'Sign in'}
@@ -125,6 +153,11 @@ export default function LoginPage() {
             >
               Forgot your password?
             </Link>
+          </div>
+          
+          <div className="text-xs text-center text-gray-400">
+            <p>Need a demo account? Use:</p>
+            <p className="mt-1 text-white/70 font-mono">test@example.com / testpassword123</p>
           </div>
         </form>
       </div>
