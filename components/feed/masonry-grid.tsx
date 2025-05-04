@@ -1,13 +1,17 @@
 "use client"
 
 import { useState } from "react"
-import { Heart, MessageCircle, MapPin, Clock } from "lucide-react"
+import { Heart, MessageCircle, MapPin, Clock, Share, Bookmark, ArrowRight } from "lucide-react"
+import { motion } from "framer-motion"
+import Image from "next/image"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 // Mock fashion items data for grid
 const fashionItems = [
   {
     id: 1,
-    image: "/images/grid/outfit1.jpg", // These would need to be added
+    image: "/images/grid/outfit1.jpg",
+    title: "Y2K Butterfly Top Set",
     user: {
       name: "Mia Harper",
       avatar: "/images/avatars/mia.jpg",
@@ -22,6 +26,7 @@ const fashionItems = [
   {
     id: 2,
     image: "/images/grid/outfit2.jpg",
+    title: "Urban Streetwear Collection",
     user: {
       name: "Noah Williams",
       avatar: "/images/avatars/noah.jpg",
@@ -36,6 +41,7 @@ const fashionItems = [
   {
     id: 3,
     image: "/images/grid/outfit3.jpg",
+    title: "Festival Season Ready",
     user: {
       name: "Emma Davis",
       avatar: "/images/avatars/emma.jpg",
@@ -51,6 +57,7 @@ const fashionItems = [
   {
     id: 4,
     image: "/images/grid/outfit4.jpg",
+    title: "Minimalist Work Ensemble",
     user: {
       name: "Liam Johnson",
       avatar: "/images/avatars/liam.jpg",
@@ -65,6 +72,7 @@ const fashionItems = [
   {
     id: 5,
     image: "/images/grid/outfit5.jpg",
+    title: "Evening Gala Elegance",
     user: {
       name: "Ava Martinez",
       avatar: "/images/avatars/ava.jpg",
@@ -79,6 +87,7 @@ const fashionItems = [
   {
     id: 6,
     image: "/images/grid/outfit6.jpg",
+    title: "Vintage Monochrome Look",
     user: {
       name: "Jackson Brown",
       avatar: "/images/avatars/jackson.jpg",
@@ -94,6 +103,7 @@ const fashionItems = [
   {
     id: 7,
     image: "/images/grid/outfit7.jpg",
+    title: "Athleisure Comfort Set",
     user: {
       name: "Isabella Wilson",
       avatar: "/images/avatars/isabella.jpg",
@@ -108,6 +118,7 @@ const fashionItems = [
   {
     id: 8,
     image: "/images/grid/outfit8.jpg",
+    title: "Fall Layering Essentials",
     user: {
       name: "Lucas Garcia",
       avatar: "/images/avatars/lucas.jpg",
@@ -122,6 +133,7 @@ const fashionItems = [
   {
     id: 9,
     image: "/images/grid/outfit9.jpg",
+    title: "Luxury Party Dress",
     user: {
       name: "Sophia Taylor",
       avatar: "/images/avatars/sophia.jpg",
@@ -133,10 +145,57 @@ const fashionItems = [
     categories: ["Luxury", "Party"],
     aspectRatio: "4/5", // Medium tall
   },
+  {
+    id: 10,
+    image: "/images/grid/outfit5.jpg",
+    title: "Bohemian Summer Collection",
+    user: {
+      name: "Oliver Wilson",
+      avatar: "/images/avatars/aiden.jpg",
+    },
+    likes: 132,
+    price: "$38/day",
+    available: true,
+    distance: "0.7 mi",
+    categories: ["Bohemian", "Summer Vibes"],
+    aspectRatio: "1/1", // Square
+  },
+  {
+    id: 11,
+    image: "/images/grid/outfit3.jpg",
+    title: "Designer Casual Mix",
+    user: {
+      name: "Amelia Johnson",
+      avatar: "/images/avatars/zoe.jpg",
+    },
+    likes: 154,
+    price: "$55/day",
+    available: false, 
+    availableFrom: "June 15",
+    distance: "1.9 mi",
+    categories: ["Luxury", "Casual"],
+    aspectRatio: "3/4", // Medium tall
+  },
+  {
+    id: 12,
+    image: "/images/grid/outfit2.jpg",
+    title: "Metropolitan Style Guide",
+    user: {
+      name: "Ethan Davis",
+      avatar: "/images/avatars/marcus.jpg",
+    },
+    likes: 92,
+    price: "$40/day",
+    available: true,
+    distance: "2.2 mi",
+    categories: ["Urban", "Everyday"],
+    aspectRatio: "2/3", // Tall
+  },
 ]
 
 export default function MasonryGrid() {
   const [likedItems, setLikedItems] = useState<number[]>([])
+  const [savedItems, setSavedItems] = useState<number[]>([])
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid")
   
   const toggleLike = (itemId: number) => {
@@ -147,107 +206,144 @@ export default function MasonryGrid() {
     )
   }
   
+  const toggleSave = (itemId: number) => {
+    setSavedItems((prev) => 
+      prev.includes(itemId) 
+        ? prev.filter((id) => id !== itemId)
+        : [...prev, itemId]
+    )
+  }
+  
   const handleDoubleTap = (itemId: number) => {
     if (!likedItems.includes(itemId)) {
       toggleLike(itemId)
-      
-      // Add heart animation logic here
     }
   }
   
+  // Helper function to handle aspect ratio
+  const getPaddingBottomForAspectRatio = (aspectRatio: string): string => {
+    const [width, height] = aspectRatio.split('/')
+    const percentage = (parseInt(height) / parseInt(width)) * 100
+    return `${percentage}%`
+  }
+  
   return (
-    <div className="py-4">
-      {/* View mode toggle */}
-      <div className="flex justify-between items-center mb-5">
-        <h2 className="text-xl font-bold text-white">Trending Now</h2>
+    <div className="py-2">
+      {/* View options header */}
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-lg font-bold text-white">
+          Explore Available Styles
+        </h2>
         
-        <div className="flex border-2 border-white/10 rounded-full p-0.5">
+        <div className="flex items-center border border-white/10 rounded-full p-0.5">
           <button
             onClick={() => setViewMode("grid")}
-            className={`px-4 py-1.5 rounded-full text-xs font-medium transition-colors ${
+            className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
               viewMode === "grid"
-                ? "bg-white text-[#121212]"
+                ? "bg-white text-[#0f0f0f]"
                 : "text-white/70 hover:text-white"
             }`}
           >
-            Grid View
+            Grid
           </button>
           <button
             onClick={() => setViewMode("map")}
-            className={`px-4 py-1.5 rounded-full text-xs font-medium transition-colors ${
+            className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
               viewMode === "map"
-                ? "bg-white text-[#121212]"
+                ? "bg-white text-[#0f0f0f]"
                 : "text-white/70 hover:text-white"
             }`}
           >
-            Map View
+            Map
           </button>
         </div>
       </div>
       
       {viewMode === "grid" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {fashionItems.map((item) => (
-            <div 
+            <motion.div 
               key={item.id}
-              className="bg-white/5 rounded-2xl overflow-hidden backdrop-blur-sm hover:transform hover:scale-[1.02] hover:shadow-xl transition-all duration-300"
+              className="rounded-xl overflow-hidden bg-[#1a1a1a] shadow-md hover:shadow-xl"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              whileHover={{ 
+                y: -4, 
+                transition: { duration: 0.2 }
+              }}
               onDoubleClick={() => handleDoubleTap(item.id)}
             >
               {/* Image Container */}
-              <div 
-                className="relative bg-gray-700" 
-                style={{ 
-                  paddingBottom: getPaddingBottomForAspectRatio(item.aspectRatio),
-                }}
-              >
-                {/* In production, replace with actual images */}
-                <div className="absolute inset-0 bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center">
-                  <div className="text-white opacity-30 font-bold">{item.user.name}'s Outfit</div>
+              <div className="relative group cursor-pointer">
+                <div 
+                  className="relative overflow-hidden"
+                  style={{ 
+                    paddingBottom: getPaddingBottomForAspectRatio(item.aspectRatio),
+                  }}
+                >
+                  {/* Image placeholder - in production, use real images */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
+                    <div className="text-white/50 font-semibold">{item.title}</div>
+                  </div>
+                  
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
+                    <button className="bg-[#ff65c5] text-white font-medium py-2 px-4 rounded-full flex items-center text-sm transform scale-90 group-hover:scale-100 transition-transform duration-200">
+                      View Details
+                      <ArrowRight className="w-4 h-4 ml-1" />
+                    </button>
+                  </div>
                 </div>
                 
-                {/* Overlay for user interaction */}
-                <div className="absolute inset-0">
-                  {/* User info overlay */}
-                  <div className="absolute top-3 left-3 flex items-center space-x-2">
-                    <div className="w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center">
-                      <span className="text-[8px] text-white">{item.user.name[0]}</span>
-                    </div>
-                    <div className="text-white text-sm font-medium">{item.user.name}</div>
-                  </div>
-                  
-                  {/* Like button */}
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      toggleLike(item.id)
-                    }}
-                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center"
-                  >
-                    <Heart 
-                      className={`w-4 h-4 ${
-                        likedItems.includes(item.id) 
-                          ? "text-[#E91E63] fill-[#E91E63]" 
-                          : "text-white"
-                      }`} 
-                    />
-                  </button>
-                  
-                  {/* Price tag */}
-                  <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm text-white text-sm font-bold">
-                    {item.price}
-                  </div>
+                {/* Save button */}
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleSave(item.id)
+                  }}
+                  className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center group-hover:opacity-100 opacity-80"
+                >
+                  <Bookmark 
+                    className={`w-4 h-4 ${
+                      savedItems.includes(item.id) 
+                        ? "text-[#c7aeef] fill-[#c7aeef]" 
+                        : "text-white"
+                    }`} 
+                  />
+                </button>
+
+                {/* Price tag */}
+                <div className="absolute bottom-3 right-3 z-10 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-sm font-bold group-hover:opacity-100 opacity-90">
+                  {item.price}
                 </div>
               </div>
               
-              {/* Content below image */}
-              <div className="p-4">
+              {/* Content */}
+              <div className="p-3">
+                {/* Title */}
+                <h3 className="text-white font-medium text-base mb-2 line-clamp-1">{item.title}</h3>
+                
+                {/* User info */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-2 flex-shrink-0">
+                    <Avatar className="w-6 h-6">
+                      <AvatarImage src={item.user.avatar} alt={item.user.name} />
+                      <AvatarFallback className="bg-[#333] text-white text-xs">
+                        {item.user.name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-white/80 text-xs line-clamp-1">{item.user.name}</span>
+                  </div>
+                </div>
+                
                 {/* Distance and availability */}
-                <div className="flex justify-between items-center mb-3">
-                  <div className="flex items-center text-white/70 text-xs">
+                <div className="flex justify-between items-center mb-2 text-xs">
+                  <div className="flex items-center text-white/60">
                     <MapPin className="w-3 h-3 mr-1" />
                     {item.distance}
                   </div>
-                  <div className={`flex items-center text-xs ${item.available ? 'text-green-500' : 'text-amber-500'}`}>
+                  <div className={`flex items-center ${item.available ? 'text-green-400' : 'text-amber-400'}`}>
                     <Clock className="w-3 h-3 mr-1" />
                     {item.available ? 'Available Now' : `Available ${(item as any).availableFrom}`}
                   </div>
@@ -258,7 +354,7 @@ export default function MasonryGrid() {
                   {item.categories.map((category) => (
                     <span 
                       key={`${item.id}-${category}`}
-                      className="px-2 py-0.5 bg-white/10 rounded-full text-white/80 text-[10px]"
+                      className="px-2 py-0.5 bg-[#2a2a2a] rounded-full text-white/70 text-[10px]"
                     >
                       {category}
                     </span>
@@ -266,37 +362,69 @@ export default function MasonryGrid() {
                 </div>
                 
                 {/* Action buttons */}
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center space-x-2">
-                    <button className="flex items-center justify-center space-x-1 text-[#E91E63] bg-[#E91E63]/10 hover:bg-[#E91E63]/20 transition-colors rounded-full px-3 py-1.5">
-                      <span className="text-xs font-medium">Borrow</span>
+                <div className="flex justify-between items-center border-t border-white/5 pt-3">
+                  <div className="flex items-center space-x-1">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleLike(item.id)
+                      }}
+                      className="flex items-center text-white/70 hover:text-white"
+                    >
+                      <Heart 
+                        className={`w-4 h-4 mr-1 ${
+                          likedItems.includes(item.id) 
+                            ? "text-[#ff65c5] fill-[#ff65c5]" 
+                            : ""
+                        }`} 
+                      />
+                      <span className="text-xs">{item.likes}</span>
                     </button>
-                    <button className="flex items-center justify-center w-8 h-8 text-white/70 hover:text-white bg-white/5 hover:bg-white/10 transition-colors rounded-full">
+                    
+                    <button className="w-6 h-6 flex items-center justify-center text-white/70 hover:text-white">
                       <MessageCircle className="w-4 h-4" />
+                    </button>
+                    
+                    <button className="w-6 h-6 flex items-center justify-center text-white/70 hover:text-white">
+                      <Share className="w-4 h-4" />
                     </button>
                   </div>
                   
-                  <div className="flex items-center text-white/70">
-                    <Heart className="w-3 h-3 mr-1" />
-                    <span className="text-xs">{item.likes}</span>
-                  </div>
+                  <button className="bg-gradient-to-r from-[#ff65c5] to-[#c7aeef] text-white text-xs font-medium py-1.5 px-3 rounded-full hover:shadow-[0_0_10px_rgba(255,101,197,0.3)] transition-shadow">
+                    Borrow
+                  </button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       ) : (
-        <div className="h-[500px] bg-gray-800 rounded-2xl flex items-center justify-center">
-          <p className="text-white/50">Map view would load here, showing available items by location</p>
+        <div className="relative h-[600px] bg-[#1a1a1a] rounded-xl flex items-center justify-center overflow-hidden">
+          <div className="absolute inset-0 opacity-20 bg-image-pattern"></div>
+          <div className="text-center p-6 z-10">
+            <div className="w-16 h-16 bg-[#222] rounded-full flex items-center justify-center mx-auto mb-4">
+              <MapPin className="w-8 h-8 text-[#ff65c5]" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Map View Coming Soon</h3>
+            <p className="text-white/60 mb-4 max-w-md mx-auto">
+              Soon you'll be able to discover fashion rentals near you with our interactive map feature.
+            </p>
+            <button 
+              onClick={() => setViewMode("grid")}
+              className="bg-white text-[#0f0f0f] font-medium py-2 px-6 rounded-full"
+            >
+              Back to Grid View
+            </button>
+          </div>
         </div>
       )}
+      
+      {/* Load more button */}
+      <div className="mt-8 text-center">
+        <button className="bg-white/10 hover:bg-white/15 text-white font-medium py-2.5 px-6 rounded-full transition-colors">
+          Load More Styles
+        </button>
+      </div>
     </div>
   )
-}
-
-// Helper function to handle aspect ratio
-function getPaddingBottomForAspectRatio(aspectRatio: string): string {
-  const [width, height] = aspectRatio.split('/')
-  const percentage = (parseInt(height) / parseInt(width)) * 100
-  return `${percentage}%`
 } 
