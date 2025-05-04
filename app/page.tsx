@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import Header from "@/components/header"
 import Footer from "@/components/footer"
 import CinematicShowcase from "@/components/cinematic-showcase"
 import OutfitCarousel from "@/components/outfit-carousel"
@@ -19,22 +18,10 @@ import GradientBackground from "@/components/gradient-background"
 import TinderStyleCloset from "@/components/tinder-style-closet"
 import FeaturesGallery from "@/components/features-gallery"
 import ShareYourStyleSection from "@/components/share-your-style-section"
+import Header from "@/components/header"
 
 export default function Home() {
-  const router = useRouter()
-  const supabase = createClientComponentClient()
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        // If user is logged in, redirect to feed page
-        router.push("/feed")
-      }
-    }
-
-    checkAuth()
-  }, [router, supabase])
+  
   return (
     <main className="bg-black text-white">
       <div className="fixed inset-0 z-0 pointer-events-none">

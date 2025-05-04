@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase, getSupabaseConfig } from '@/lib/supabase'
 import Link from 'next/link'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -12,7 +13,20 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [supabaseConnected, setSupabaseConnected] = useState(true)
+  const supabase = createClientComponentClient()
 
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        // If user is logged in, redirect to feed page
+        router.push("/feed")
+      }
+    }
+
+    checkAuth()
+  }, [router, supabase])
+  
   // Check if Supabase is properly configured
   useEffect(() => {
     const config = getSupabaseConfig()
