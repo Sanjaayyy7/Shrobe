@@ -20,7 +20,12 @@ export default function SettingsPage() {
     bio: "",
     email: ""
   })
-
+  const [originalUsername, setOriginalUsername] = useState("")
+  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [saveError, setSaveError] = useState("")
+  const [usernameError, setUsernameError] = useState("")
+  const [checkingUsername, setCheckingUsername] = useState(false)
+  
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -43,10 +48,16 @@ export default function SettingsPage() {
         // Set user data
         setUser(data.session.user)
         
+        console.log("Current user metadata:", data.session.user.user_metadata)
+        
+        // Get username from metadata or email
+        const currentUsername = data.session.user.user_metadata?.username || data.session.user.email?.split('@')[0] || ""
+        setOriginalUsername(currentUsername)
+        
         // Initialize form with user data
         setFormData({
           fullName: data.session.user.user_metadata?.full_name || "",
-          username: data.session.user.user_metadata?.username || data.session.user.email?.split('@')[0] || "",
+          username: currentUsername,
           bio: data.session.user.user_metadata?.bio || "",
           email: data.session.user.email || ""
         })
@@ -60,19 +71,142 @@ export default function SettingsPage() {
     }
     
     checkAuth()
+    
+    // Escuchar eventos de actualización de perfil
+    const handleProfileUpdate = (event: any) => {
+      if (event.detail) {
+        setFormData(prev => ({
+          ...prev,
+          fullName: event.detail.fullName || prev.fullName,
+          username: event.detail.username || prev.username,
+          bio: event.detail.bio || prev.bio
+        }))
+      }
+    }
+    
+    window.addEventListener('userProfileUpdated', handleProfileUpdate as EventListener)
+    
+    return () => {
+      window.removeEventListener('userProfileUpdated', handleProfileUpdate as EventListener)
+    }
   }, [router, supabase])
+
+  // Check if username exists
+  const checkUsernameExists = async (username: string) => {
+    if (username === originalUsername) {
+      setUsernameError("")
+      return false
+    }
+    
+    setCheckingUsername(true)
+    
+    try {
+      // Check if username exists in profiles table
+      const { data: existingUsers, error } = await supabase
+        .from('profiles')  // Assuming you have a profiles table
+        .select('username')
+        .eq('username', username)
+        .limit(1)
+      
+      if (error) {
+        console.error("Error checking username:", error)
+        setUsernameError("Could not verify username availability")
+        return true
+      }
+      
+      // If we found a user with this username
+      if (existingUsers && existingUsers.length > 0) {
+        setUsernameError("This username is already taken")
+        return true
+      }
+      
+      // Username is available
+      setUsernameError("")
+      return false
+    } catch (err) {
+      console.error("Exception during username check:", err)
+      setUsernameError("Could not verify username availability")
+      return true
+    } finally {
+      setCheckingUsername(false)
+    }
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
+    
+    // Clear any previous success/error messages when form is modified
+    setSaveSuccess(false)
+    setSaveError("")
+    
+    // Check username availability when it changes
+    if (name === 'username' && value.trim() !== originalUsername) {
+      // Basic validation for username format
+      if (!/^[a-zA-Z0-9_]+$/.test(value)) {
+        setUsernameError("Username can only contain letters, numbers, and underscores")
+      } else {
+        setUsernameError("")
+        
+        // Only check with the database if it passes basic validation
+        // Use debounce to avoid too many checks while typing
+        const timeoutId = setTimeout(() => {
+          checkUsernameExists(value)
+        }, 500)
+        
+        return () => clearTimeout(timeoutId)
+      }
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
+    setSaveSuccess(false)
+    setSaveError("")
+    
+    if (
+      formData.fullName === user?.user_metadata?.full_name &&
+      formData.username === originalUsername &&
+      formData.bio === user?.user_metadata?.bio
+    ) {
+      setSaveError("You haven’t changed anything.")
+      setSaving(false)
+      return
+    }
+    
+    // Final validation checks before save
+    if (formData.username.trim() === "") {
+      setSaveError("Username cannot be empty")
+      setSaving(false)
+      return
+    }
+    
+    // Check if username format is valid
+    if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+      setSaveError("Username can only contain letters, numbers, and underscores")
+      setSaving(false)
+      return
+    }
+    
+    // Check if username exists (only if it has changed)
+    if (formData.username !== originalUsername) {
+      const usernameExists = await checkUsernameExists(formData.username)
+      if (usernameExists) {
+        setSaveError("This username is already taken. Please choose another one.")
+        setSaving(false)
+        return
+      }
+    }
     
     try {
-      const { error } = await supabase.auth.updateUser({
+      console.log("Updating user profile with:", {
+        full_name: formData.fullName,
+        username: formData.username,
+        bio: formData.bio
+      })
+      
+      const { data, error } = await supabase.auth.updateUser({
         data: {
           full_name: formData.fullName,
           username: formData.username,
@@ -82,13 +216,70 @@ export default function SettingsPage() {
       
       if (error) {
         console.error("Error updating profile:", error)
-        alert("Failed to update profile. Please try again.")
-      } else {
-        alert("Profile updated successfully!")
+        
+        // Check if the error is related to username being taken
+        if (error.message && error.message.includes("username")) {
+          setSaveError("This username is already taken. Please choose another one.")
+        } else {
+          setSaveError(error.message || "Failed to update profile. Please try again.")
+        }
+        setSaving(false)
+        return
       }
+      
+      console.log("Profile updated successfully:", data)
+      
+      // Actualizar en la tabla profiles
+      if (!user || !user.id) {
+        console.error("User session not available — cannot update profile")
+        setSaveError("User session not available. Please reload and try again.")
+        setSaving(false)
+        return
+      }
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          username: formData.username,
+          full_name: formData.fullName,
+          bio: formData.bio,
+          updated_at: new Date().toISOString()
+        })
+      
+      if (profileError) {
+        console.error("Error updating profile table:", profileError)
+        setSaveError("Profile was partially updated. Please try again.")
+        setSaving(false)
+        return
+      }
+      
+      setUser(data.user)
+      setSaveSuccess(true)
+      setOriginalUsername(formData.username)
+      
+      // Actualizar localStorage con los datos de usuario actualizados
+      const profileData = {
+        fullName: formData.fullName,
+        username: formData.username,
+        bio: formData.bio,
+        email: formData.email
+      }
+      localStorage.setItem('userProfile', JSON.stringify(profileData))
+      
+      // Emitir evento personalizado para actualizar componentes que muestran datos del usuario
+      const updateEvent = new CustomEvent('userProfileUpdated', {
+        detail: {
+          fullName: formData.fullName,
+          username: formData.username,
+          bio: formData.bio
+        }
+      })
+      window.dispatchEvent(updateEvent)
+      
     } catch (err) {
       console.error("Exception during profile update:", err)
-      alert("An error occurred. Please try again.")
+      setSaveError("An error occurred. Please try again.")
     } finally {
       setSaving(false)
     }
@@ -135,6 +326,20 @@ export default function SettingsPage() {
             
             <form onSubmit={handleSubmit}>
               <div className="space-y-6">
+                {/* Success message */}
+                {saveSuccess && (
+                  <div className="bg-green-900/60 border border-green-500/50 rounded-md p-4 text-green-200">
+                    Profile updated successfully!
+                  </div>
+                )}
+                
+                {/* Error message */}
+                {saveError && (
+                  <div className="bg-red-900/60 border border-red-500/50 rounded-md p-4 text-red-200">
+                    {saveError}
+                  </div>
+                )}
+                
                 <div>
                   <label htmlFor="fullName" className="block text-sm font-medium text-gray-300 mb-1">
                     Full Name
@@ -163,9 +368,20 @@ export default function SettingsPage() {
                       name="username"
                       value={formData.username}
                       onChange={handleChange}
-                      className="flex-1 px-4 py-2.5 bg-black/40 border border-white/20 rounded-r-lg text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-colors"
+                      className={`flex-1 px-4 py-2.5 bg-black/40 border ${
+                        usernameError ? 'border-red-500' : 'border-white/20'
+                      } rounded-r-lg text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-colors`}
                     />
+                    {checkingUsername && (
+                      <div className="ml-2 flex items-center">
+                        <div className="w-4 h-4 border-2 border-t-transparent border-pink-500 rounded-full animate-spin"></div>
+                      </div>
+                    )}
                   </div>
+                  {usernameError && (
+                    <p className="mt-1 text-xs text-red-400">{usernameError}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">Username can only contain letters, numbers, and underscores.</p>
                 </div>
                 
                 <div>
@@ -201,7 +417,7 @@ export default function SettingsPage() {
                 <div className="pt-4">
                   <button
                     type="submit"
-                    disabled={saving}
+                    disabled={saving || usernameError !== ""}
                     className="w-full flex items-center justify-center px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-pink-600 to-purple-600 rounded-lg hover:from-pink-700 hover:to-purple-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                   >
                     {saving ? (

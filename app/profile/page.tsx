@@ -14,29 +14,68 @@ export default function ProfilePage() {
   const supabase = createClientComponentClient()
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
+  const [userProfile, setUserProfile] = useState({
+    fullName: "",
+    username: "",
+    bio: "",
+    profilePic: ""
+  })
+
+  const loadUserProfile = async () => {
+    try {
+      const { data, error } = await supabase.auth.getSession()
+      
+      if (error) {
+        console.error("Error checking profile auth:", error)
+        router.push("/login")
+        return
+      }
+      
+      if (!data?.session?.user) {
+        router.push("/login")
+        return
+      }
+      
+      // Set user data
+      setUser(data.session.user)
+      
+      console.log("Profile page - user metadata:", data.session.user.user_metadata)
+      
+      // Verificar si hay datos en localStorage primero
+      const localProfile = localStorage.getItem('userProfile')
+      if (localProfile) {
+        try {
+          const parsedProfile = JSON.parse(localProfile)
+          setUserProfile({
+            fullName: parsedProfile.fullName || data.session.user.user_metadata?.full_name || "User",
+            username: parsedProfile.username || data.session.user.user_metadata?.username || data.session.user.email?.split('@')[0] || "username",
+            bio: parsedProfile.bio || data.session.user.user_metadata?.bio || "No bio yet. Edit your profile to add one!",
+            profilePic: data.session.user.user_metadata?.avatar_url || ""
+          })
+          return
+        } catch (e) {
+          console.error("Error parsing profile from localStorage", e)
+        }
+      }
+      
+      // Set profile data from Supabase
+      setUserProfile({
+        fullName: data.session.user.user_metadata?.full_name || "User",
+        username: data.session.user.user_metadata?.username || data.session.user.email?.split('@')[0] || "username",
+        bio: data.session.user.user_metadata?.bio || "No bio yet. Edit your profile to add one!",
+        profilePic: data.session.user.user_metadata?.avatar_url || ""
+      })
+    } catch (error) {
+      console.error("Profile page error:", error)
+      router.push("/login")
+    }
+  }
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
         setLoading(true)
-        
-        // Get session
-        const { data, error } = await supabase.auth.getSession()
-        
-        if (error) {
-          console.error("Error checking profile auth:", error)
-          router.push("/login")
-          return
-        }
-        
-        if (!data?.session?.user) {
-          router.push("/login")
-          return
-        }
-        
-        // Set user data
-        setUser(data.session.user)
-        
+        await loadUserProfile()
       } catch (error) {
         console.error("Profile page error:", error)
         router.push("/login")
@@ -46,6 +85,53 @@ export default function ProfilePage() {
     }
     
     checkAuth()
+    
+    // Escuchar cambios en el perfil
+    const handleProfileUpdate = (event: any) => {
+      if (event.detail) {
+        setUserProfile(prev => ({
+          ...prev,
+          fullName: event.detail.fullName || prev.fullName,
+          username: event.detail.username || prev.username,
+          bio: event.detail.bio || prev.bio
+        }))
+      }
+    }
+
+    useEffect(() => {
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === "visible") {
+          loadUserProfile()
+        }
+      }
+    
+      document.addEventListener("visibilitychange", handleVisibilityChange)
+    
+      return () => {
+        document.removeEventListener("visibilitychange", handleVisibilityChange)
+      }
+    }, [])
+    
+    window.addEventListener('userProfileUpdated', handleProfileUpdate as EventListener)
+    
+    // También escuchar cambios en las sesiones de Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'USER_UPDATED' && session) {
+        // Actualizar el perfil cuando los metadatos del usuario cambien
+        setUser(session.user)
+        setUserProfile(prev => ({
+          ...prev,
+          fullName: session.user.user_metadata?.full_name || prev.fullName,
+          username: session.user.user_metadata?.username || prev.username,
+          bio: session.user.user_metadata?.bio || prev.bio
+        }))
+      }
+    })
+    
+    return () => {
+      window.removeEventListener('userProfileUpdated', handleProfileUpdate as EventListener)
+      subscription.unsubscribe()
+    }
   }, [router, supabase])
 
   const handleSignOut = async () => {
@@ -103,7 +189,7 @@ export default function ProfilePage() {
               <div className="absolute -top-16 left-6 md:left-6 md:relative md:top-auto border-4 border-black rounded-full overflow-hidden">
                 <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-700 flex items-center justify-center rounded-full">
                   <div className="text-3xl font-bold text-white/60">
-                    {user?.email?.charAt(0).toUpperCase() || "U"}
+                    {userProfile.fullName.charAt(0).toUpperCase()}
                   </div>
                 </div>
               </div>
@@ -113,9 +199,9 @@ export default function ProfilePage() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between">
                   <div>
                     <h1 className="text-2xl font-bold">
-                      {user?.user_metadata?.full_name || "User"}
+                      {userProfile.fullName}
                     </h1>
-                    <p className="text-gray-400">@{user?.email?.split('@')[0] || "username"}</p>
+                    <p className="text-gray-400">@{userProfile.username}</p>
                   </div>
                   
                   <div className="mt-4 md:mt-0 flex space-x-3">
@@ -139,7 +225,7 @@ export default function ProfilePage() {
                   <div>
                     <h2 className="text-lg font-semibold">About</h2>
                     <p className="text-gray-300 mt-1">
-                      {user?.user_metadata?.bio || "No bio yet. Edit your profile to add one!"}
+                      {userProfile.bio}
                     </p>
                   </div>
                   

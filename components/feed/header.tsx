@@ -7,14 +7,104 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Search, Bell, MessageSquare, User, Plus, Menu, LogOut, Settings, UserCircle } from "lucide-react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
+// Define un tipo para el evento personalizado de actualización de usuario
+declare global {
+  interface WindowEventMap {
+    'userProfileUpdated': CustomEvent<{
+      fullName?: string;
+      username?: string;
+      bio?: string;
+    }>;
+  }
+}
+
 export default function Header() {
   const [activeTab, setActiveTab] = useState("discover")
   const [scrolled, setScrolled] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
-  const userName = "Alex" // This would come from auth state in a real app
+  const [user, setUser] = useState<any>(null)
+  const [userName, setUserName] = useState("")
+  const [userNameUpdated, setUserNameUpdated] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const supabase = createClientComponentClient()
+
+  // Get user data on component mount
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        // Intentar obtener datos desde localStorage primero para mostrarlos inmediatamente
+        const cachedUserData = localStorage.getItem('userProfile')
+        if (cachedUserData) {
+          const userData = JSON.parse(cachedUserData)
+          if (userData.fullName) {
+            setUserName(userData.fullName)
+            setUserNameUpdated(true)
+          }
+        }
+        
+        // Luego obtener datos actualizados de Supabase
+        const { data, error } = await supabase.auth.getSession()
+        
+        if (error || !data.session) {
+          console.error("Error fetching user session:", error)
+          return
+        }
+        
+        setUser(data.session.user)
+        
+        // Si no hay datos en localStorage o no hemos actualizado el nombre
+        if (!userNameUpdated) {
+          // Get display name from user metadata or email
+          const fullName = data.session.user.user_metadata?.full_name
+          const email = data.session.user.email
+          
+          if (fullName) {
+            setUserName(fullName)
+          } else if (email) {
+            // Use part before @ in email as fallback
+            setUserName(email.split('@')[0])
+          } else {
+            setUserName("User")
+          }
+          
+          // Actualizar localStorage con los datos del usuario
+          saveUserProfileToLocalStorage(data.session.user)
+        }
+      } catch (err) {
+        console.error("Error getting user data:", err)
+      }
+    }
+    
+    fetchUserData()
+    
+    // Escuchar evento personalizado para actualización de perfil
+    const handleProfileUpdate = (event: CustomEvent<{fullName?: string, username?: string, bio?: string}>) => {
+      console.log("Header received profile update event:", event.detail)
+      if (event.detail.fullName) {
+        setUserName(event.detail.fullName)
+        setUserNameUpdated(true)
+      }
+    }
+    
+    window.addEventListener('userProfileUpdated', handleProfileUpdate as EventListener)
+    
+    return () => {
+      window.removeEventListener('userProfileUpdated', handleProfileUpdate as EventListener)
+    }
+  }, [supabase, userNameUpdated])
+
+  // Guardar perfil de usuario en localStorage
+  const saveUserProfileToLocalStorage = (userData: any) => {
+    const profileData = {
+      fullName: userData.user_metadata?.full_name || "",
+      username: userData.user_metadata?.username || userData.email?.split('@')[0] || "",
+      bio: userData.user_metadata?.bio || "",
+      email: userData.email || ""
+    }
+    
+    localStorage.setItem('userProfile', JSON.stringify(profileData))
+  }
 
   // Handle scroll effect
   useEffect(() => {
@@ -41,6 +131,7 @@ export default function Header() {
   // Sign out function
   const handleSignOut = async () => {
     try {
+      localStorage.removeItem('userProfile') // Limpiar datos del usuario al cerrar sesión
       const { error } = await supabase.auth.signOut()
       if (error) {
         console.error("Error signing out:", error)
@@ -77,48 +168,6 @@ export default function Header() {
                 Shrobe
               </motion.span>
             </Link>
-            
-            <nav className="hidden md:flex items-center ml-6 space-x-1">
-              <motion.button 
-                onClick={() => setActiveTab("discover")}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors relative ${
-                  activeTab === "discover" 
-                    ? "text-white" 
-                    : "text-white/70 hover:text-white"
-                }`}
-                whileHover={{ scale: 1.05 }}
-                transition={{ duration: 0.2 }}
-              >
-                Discover
-                {activeTab === "discover" && (
-                  <motion.span 
-                    className="absolute inset-0 bg-white/10 rounded-full -z-10"
-                    layoutId="activeTab"
-                    transition={{ duration: 0.2 }}
-                  />
-                )}
-              </motion.button>
-              
-              <motion.button 
-                onClick={() => setActiveTab("nearby")}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors relative ${
-                  activeTab === "nearby" 
-                    ? "text-white" 
-                    : "text-white/70 hover:text-white"
-                }`}
-                whileHover={{ scale: 1.05 }}
-                transition={{ duration: 0.2 }}
-              >
-                Nearby
-                {activeTab === "nearby" && (
-                  <motion.span 
-                    className="absolute inset-0 bg-white/10 rounded-full -z-10"
-                    layoutId="activeTab"
-                    transition={{ duration: 0.2 }}
-                  />
-                )}
-              </motion.button>
-            </nav>
           </div>
 
           {/* Welcome message - Mobile hidden, visible on md+ */}
@@ -225,7 +274,7 @@ export default function Header() {
                   >
                     <div className="p-3 border-b border-white/10">
                       <p className="text-sm font-medium text-white">{userName}</p>
-                      <p className="text-xs text-gray-400">@username</p>
+                      <p className="text-xs text-gray-400">@{user?.email?.split('@')[0] || "username"}</p>
                     </div>
                     <div className="py-1">
                       <Link 
