@@ -44,17 +44,7 @@ export default function FeedPage() {
         console.log("Checking authentication status...")
         setIsLoading(true)
         
-        // Check for demo mode login
-        const demoUser = typeof window !== 'undefined' ? localStorage.getItem('shrobe_demo_user') : null
-        
-        if (demoUser) {
-          console.log("Demo user found in local storage")
-          setIsAuthenticated(true)
-          setIsLoading(false)
-          return
-        }
-        
-        // Proceed with real authentication
+        // Get the session from Supabase
         const { data, error } = await supabase.auth.getSession()
         
         console.log("Auth session response:", { data, error })
