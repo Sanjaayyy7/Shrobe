@@ -1,14 +1,20 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
-import { motion } from "framer-motion"
-import { Search, Bell, MessageSquare, User, Plus, Menu } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { motion, AnimatePresence } from "framer-motion"
+import { Search, Bell, MessageSquare, User, Plus, Menu, LogOut, Settings, UserCircle } from "lucide-react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 export default function Header() {
   const [activeTab, setActiveTab] = useState("discover")
   const [scrolled, setScrolled] = useState(false)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
   const userName = "Alex" // This would come from auth state in a real app
+  const profileMenuRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
+  const supabase = createClientComponentClient()
 
   // Handle scroll effect
   useEffect(() => {
@@ -19,6 +25,33 @@ export default function Header() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  // Close profile menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  // Sign out function
+  const handleSignOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error("Error signing out:", error)
+      } else {
+        console.log("Successfully signed out")
+        router.push("/")
+      }
+    } catch (err) {
+      console.error("Exception during sign out:", err)
+    }
+  }
 
   return (
     <motion.header 
@@ -164,13 +197,65 @@ export default function Header() {
               <MessageSquare className="w-5 h-5" />
             </motion.button>
             
-            <motion.button 
-              className="w-9 h-9 flex items-center justify-center text-white/70 hover:text-white rounded-full hover:bg-white/10 transition-colors"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <User className="w-5 h-5" />
-            </motion.button>
+            {/* Profile Button with Dropdown */}
+            <div className="relative" ref={profileMenuRef}>
+              <motion.button 
+                className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
+                  showProfileMenu 
+                    ? "text-white bg-white/20" 
+                    : "text-white/70 hover:text-white hover:bg-white/10"
+                }`}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                aria-label="Toggle profile menu"
+              >
+                <User className="w-5 h-5" />
+              </motion.button>
+              
+              {/* Profile Dropdown Menu */}
+              <AnimatePresence>
+                {showProfileMenu && (
+                  <motion.div 
+                    className="absolute right-0 mt-2 w-48 bg-black/90 backdrop-blur-md border border-white/10 rounded-xl shadow-xl overflow-hidden z-50"
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="p-3 border-b border-white/10">
+                      <p className="text-sm font-medium text-white">{userName}</p>
+                      <p className="text-xs text-gray-400">@username</p>
+                    </div>
+                    <div className="py-1">
+                      <Link 
+                        href="/profile" 
+                        className="flex items-center space-x-2 px-4 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                        onClick={() => setShowProfileMenu(false)}
+                      >
+                        <UserCircle className="w-4 h-4" />
+                        <span>My Profile</span>
+                      </Link>
+                      <Link 
+                        href="/settings" 
+                        className="flex items-center space-x-2 px-4 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                        onClick={() => setShowProfileMenu(false)}
+                      >
+                        <Settings className="w-4 h-4" />
+                        <span>Settings</span>
+                      </Link>
+                      <button 
+                        onClick={handleSignOut}
+                        className="flex items-center w-full space-x-2 px-4 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
             
             {/* Mobile Menu */}
             <motion.button 

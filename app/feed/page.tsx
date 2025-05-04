@@ -41,30 +41,31 @@ export default function FeedPage() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log("Checking authentication status...")
+        console.log("Feed page - Checking authentication status...")
         setIsLoading(true)
         
         // Get the session from Supabase
         const { data, error } = await supabase.auth.getSession()
         
-        console.log("Auth session response:", { data, error })
+        console.log("Feed page - Auth session response:", { data, error })
         
         if (error) {
-          console.error("Session error:", error)
+          console.error("Feed page - Session error:", error)
+          router.push("/login")
           return
         }
         
-        if (!data.session) {
-          console.log("No active session, redirecting to login")
+        if (!data?.session?.user) {
+          console.log("Feed page - No active session, redirecting to login")
           router.push("/login")
         } else {
-          console.log("User authenticated:", data.session.user.email)
+          console.log("Feed page - User authenticated:", data.session.user.email)
           setIsAuthenticated(true)
+          setIsLoading(false)
         }
       } catch (error) {
-        console.error("Authentication error:", error)
-      } finally {
-        setIsLoading(false)
+        console.error("Feed page - Authentication error:", error)
+        router.push("/login")
       }
     }
 
