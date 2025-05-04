@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { supabase, getSupabaseConfig } from '@/lib/supabase'
 import Link from 'next/link'
 
 export default function LoginPage() {
@@ -11,34 +11,52 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [supabaseConnected, setSupabaseConnected] = useState(true)
+
+  // Check if Supabase is properly configured
+  useEffect(() => {
+    const config = getSupabaseConfig()
+    if (!config.url || !config.hasKey) {
+      console.error('Supabase configuration missing. URL or Key not set.')
+      setSupabaseConnected(false)
+      setError('Supabase configuration is incomplete. Please check your environment variables.')
+    }
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
-    console.log('Attempting to sign in with:', { email })
+    if (!supabaseConnected) {
+      setError('Cannot connect to authentication service. Please try again later.')
+      setLoading(false)
+      return
+    }
 
     try {
+      console.log('Attempting to sign in with:', email)
+      
+      // Use Supabase's auth.signInWithPassword method
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      console.log('Auth response:', { data, error })
-
       if (error) {
         console.error('Authentication error:', error)
-        throw error
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Invalid email or password. Please try again.')
+        } else {
+          throw error
+        }
       }
 
       if (data?.user) {
         console.log('Login successful, redirecting to feed')
-        // Redirect to feed page on successful login
         router.push('/feed')
       } else {
-        console.warn('No user data returned but no error either')
-        setError('Successfully authenticated but no user data found')
+        throw new Error('Successfully authenticated but no user data found')
       }
     } catch (error: any) {
       console.error('Login error:', error)
@@ -121,7 +139,7 @@ export default function LoginPage() {
           <div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !supabaseConnected}
               className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-primary-pink to-primary-purple hover:from-primary-purple hover:to-primary-pink focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-pink disabled:opacity-50 transition-all duration-300 shadow-md"
             >
               {loading ? 'Signing in...' : 'Sign in'}
