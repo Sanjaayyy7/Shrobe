@@ -97,20 +97,6 @@ export default function ProfilePage() {
         }))
       }
     }
-
-    useEffect(() => {
-      const handleVisibilityChange = () => {
-        if (document.visibilityState === "visible") {
-          loadUserProfile()
-        }
-      }
-    
-      document.addEventListener("visibilitychange", handleVisibilityChange)
-    
-      return () => {
-        document.removeEventListener("visibilitychange", handleVisibilityChange)
-      }
-    }, [])
     
     window.addEventListener('userProfileUpdated', handleProfileUpdate as EventListener)
     
@@ -133,6 +119,20 @@ export default function ProfilePage() {
       subscription.unsubscribe()
     }
   }, [router, supabase])
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        loadUserProfile()
+      }
+    }
+  
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+  
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [])
 
   const handleSignOut = async () => {
     try {
