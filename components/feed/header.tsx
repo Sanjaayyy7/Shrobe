@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { Search, Bell, MessageSquare, User, Plus, Menu, LogOut, Settings, UserCircle } from "lucide-react"
+import { Search, Bell, MessageSquare, User, Plus, Menu, Home, LogOut, Settings, UserCircle} from "lucide-react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 // Define un tipo para el evento personalizado de actualización de usuario
@@ -18,6 +18,7 @@ declare global {
   }
 }
 
+
 export default function Header() {
   const [activeTab, setActiveTab] = useState("discover")
   const [scrolled, setScrolled] = useState(false)
@@ -28,6 +29,7 @@ export default function Header() {
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const supabase = createClientComponentClient()
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
 
   // Get user data on component mount
   useEffect(() => {
@@ -106,6 +108,7 @@ export default function Header() {
     localStorage.setItem('userProfile', JSON.stringify(profileData))
   }
 
+
   // Handle scroll effect
   useEffect(() => {
     const handleScroll = () => {
@@ -115,6 +118,7 @@ export default function Header() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
 
   // Close profile menu when clicking outside
   useEffect(() => {
@@ -143,6 +147,7 @@ export default function Header() {
       console.error("Exception during sign out:", err)
     }
   }
+
 
   return (
     <motion.header 
