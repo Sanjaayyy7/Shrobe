@@ -1,202 +1,259 @@
 "use client"
 
-import { useState } from "react"
-import { Heart, MessageCircle, MapPin, Clock, Share, Bookmark, ArrowRight } from "lucide-react"
-import { motion } from "framer-motion"
+import { useState, useRef } from "react"
+import { Heart, MessageCircle, MapPin, Clock, Share, Bookmark, ArrowRight, Filter, Grid, Layers, Search, X } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import Link from "next/link"
 
-// Mock fashion items data for grid
+// Mock fashion items data with improved data for a Pexels-like experience
 const fashionItems = [
   {
     id: 1,
-    image: "/images/grid/outfit1.jpg",
-    title: "Y2K Butterfly Top Set",
+    image: "/images/uploads/fashion-red-sequin.jpg",
+    title: "Red Sequin Gown",
+    description: "Statement floor-length sequin dress with slim straps for special occasions",
     user: {
-      name: "Mia Harper",
-      avatar: "/images/avatars/mia.jpg",
+      name: "Sophia Davis",
+      username: "sophiastyle",
+      avatar: "/images/avatars/sophia.jpg",
     },
-    likes: 124,
-    price: "$32/day",
+    likes: 2941,
+    price: "$45/day",
     available: true,
     distance: "0.8 mi",
-    categories: ["Y2K", "Party"],
+    categories: ["Evening", "Formal", "Statement"],
     aspectRatio: "2/3", // Tall
+    color: "#E84D60" // Primary color
   },
   {
     id: 2,
-    image: "/images/grid/outfit2.jpg",
-    title: "Urban Streetwear Collection",
+    image: "/images/uploads/fashion-coastal-sunset.jpg",
+    title: "Coastal Knit Ensemble",
+    description: "Relaxed cream knit cardigan with wide-leg pants for beach-side evenings",
     user: {
-      name: "Noah Williams",
-      avatar: "/images/avatars/noah.jpg",
+      name: "Alex Chen",
+      username: "alexurban",
+      avatar: "/images/avatars/alex.jpg",
     },
-    likes: 87,
-    price: "$45/day",
+    likes: 3428,
+    price: "$32/day",
     available: true,
     distance: "1.2 mi",
-    categories: ["Streetwear", "Everyday"],
-    aspectRatio: "4/5", // Medium tall
+    categories: ["Casual", "Bohemian", "Evening"],
+    aspectRatio: "3/4", // Medium tall
+    color: "#F5A623" // Primary color
   },
   {
     id: 3,
-    image: "/images/grid/outfit3.jpg",
-    title: "Festival Season Ready",
+    image: "/images/uploads/fashion-festival-outfit.jpg",
+    title: "Festival Ready Outfit",
+    description: "Stylish festival look with cargo pants, white bikini top and boho accessories",
     user: {
-      name: "Emma Davis",
-      avatar: "/images/avatars/emma.jpg",
+      name: "Zara Thompson",
+      username: "zaradesigns",
+      avatar: "/images/avatars/zara.jpg",
     },
-    likes: 213,
-    price: "$28/day",
-    available: false,
-    availableFrom: "June 10",
+    likes: 2752,
+    price: "$38/day",
+    available: true,
     distance: "2.5 mi",
-    categories: ["Festival", "Summer Vibes"],
-    aspectRatio: "1/1", // Square
+    categories: ["Festival", "Summer", "Casual"],
+    aspectRatio: "2/3", // Tall
+    color: "#89CFF0" // Primary color
   },
   {
     id: 4,
-    image: "/images/grid/outfit4.jpg",
-    title: "Minimalist Work Ensemble",
+    image: "/images/uploads/fashion-western-inspired.jpg",
+    title: "Western-Inspired Look",
+    description: "Stylish western-inspired outfit with corset top, white skirt and cowboy boots",
     user: {
-      name: "Liam Johnson",
-      avatar: "/images/avatars/liam.jpg",
+      name: "Marco Rodriguez",
+      username: "marcofashion",
+      avatar: "/images/avatars/marco.jpg",
     },
-    likes: 56,
-    price: "$38/day",
+    likes: 3124,
+    price: "$42/day",
     available: true,
     distance: "0.5 mi",
-    categories: ["Minimalist", "Work"],
-    aspectRatio: "5/6", // Nearly square
+    categories: ["Western", "Statement", "Theme"],
+    aspectRatio: "2/3", // Tall
+    color: "#A98274" // Primary color
   },
   {
     id: 5,
-    image: "/images/grid/outfit5.jpg",
+    image: "/images/uploads/fashion-red-sequin.jpg",
     title: "Evening Gala Elegance",
+    description: "Designer evening gown with intricate beading and dramatic train",
     user: {
-      name: "Ava Martinez",
+      name: "Olivia Martinez",
+      username: "oliviastyle",
       avatar: "/images/avatars/ava.jpg",
     },
-    likes: 164,
-    price: "$52/day",
-    available: true,
+    likes: 1864,
+    price: "$75/day",
+    available: false,
+    availableFrom: "Jun 15",
     distance: "3.1 mi",
-    categories: ["Luxury", "Formal"],
-    aspectRatio: "2/3", // Tall
+    categories: ["Luxury", "Formal", "Gala"],
+    aspectRatio: "3/4", // Medium tall
+    color: "#9D65C9" // Primary color
   },
   {
     id: 6,
-    image: "/images/grid/outfit6.jpg",
-    title: "Vintage Monochrome Look",
+    image: "/images/uploads/fashion-western-inspired.jpg",
+    title: "Vintage Denim Collection",
+    description: "Curated vintage denim pieces with authentic wear patterns",
     user: {
-      name: "Jackson Brown",
+      name: "Jackson Reed",
+      username: "jacksonvintage",
       avatar: "/images/avatars/jackson.jpg",
     },
-    likes: 98,
-    price: "$42/day",
-    available: false,
-    availableFrom: "May 22",
+    likes: 1598,
+    price: "$29/day",
+    available: true,
     distance: "1.7 mi",
-    categories: ["Vintage", "Monochrome"],
-    aspectRatio: "1/1", // Square
+    categories: ["Vintage", "Denim", "Casual"],
+    aspectRatio: "4/5", // Medium tall
+    color: "#4169E1" // Primary color
   },
   {
     id: 7,
-    image: "/images/grid/outfit7.jpg",
-    title: "Athleisure Comfort Set",
+    image: "/images/uploads/fashion-festival-outfit.jpg",
+    title: "Summer Festival Set",
+    description: "Vibrant festival-ready outfit with bold prints and comfortable fabrics",
     user: {
-      name: "Isabella Wilson",
+      name: "Isabella Wong",
+      username: "bellafestival",
       avatar: "/images/avatars/isabella.jpg",
     },
-    likes: 142,
+    likes: 2142,
     price: "$35/day",
     available: true,
     distance: "0.9 mi",
-    categories: ["Athleisure", "Everyday"],
-    aspectRatio: "3/4", // Medium tall
+    categories: ["Festival", "Summer", "Vibrant"],
+    aspectRatio: "1/1", // Square
+    color: "#FF9966" // Primary color
   },
   {
     id: 8,
-    image: "/images/grid/outfit8.jpg",
-    title: "Fall Layering Essentials",
+    image: "/images/uploads/fashion-coastal-sunset.jpg",
+    title: "Minimal Beach Collection",
+    description: "Effortless beach-to-bar collection in neutral, relaxed fabrics",
     user: {
-      name: "Lucas Garcia",
+      name: "Lucas White",
+      username: "lucasminimal",
       avatar: "/images/avatars/lucas.jpg",
     },
-    likes: 76,
-    price: "$29/day",
+    likes: 1876,
+    price: "$32/day",
     available: true,
     distance: "2.3 mi",
-    categories: ["Streetwear", "Fall Layers"],
+    categories: ["Beach", "Minimal", "Neutral"],
     aspectRatio: "2/3", // Tall
+    color: "#D8BFD8" // Primary color
   },
   {
     id: 9,
-    image: "/images/grid/outfit9.jpg",
-    title: "Luxury Party Dress",
+    image: "/images/uploads/fashion-red-sequin.jpg",
+    title: "Modern Party Collection",
+    description: "Contemporary party pieces with unexpected silhouettes and textures",
     user: {
       name: "Sophia Taylor",
+      username: "sophiaparty",
       avatar: "/images/avatars/sophia.jpg",
     },
-    likes: 189,
-    price: "$48/day",
+    likes: 1989,
+    price: "$45/day",
     available: true,
     distance: "1.5 mi",
-    categories: ["Luxury", "Party"],
+    categories: ["Party", "Modern", "Evening"],
     aspectRatio: "4/5", // Medium tall
+    color: "#FF69B4" // Primary color
   },
   {
     id: 10,
-    image: "/images/grid/outfit5.jpg",
-    title: "Bohemian Summer Collection",
+    image: "/images/uploads/fashion-western-inspired.jpg",
+    title: "Sustainable Summer Edit",
+    description: "Eco-conscious summer collection made from recycled materials",
     user: {
-      name: "Oliver Wilson",
+      name: "Aiden Wilson",
+      username: "aidensustainable",
       avatar: "/images/avatars/aiden.jpg",
     },
-    likes: 132,
+    likes: 1732,
     price: "$38/day",
     available: true,
     distance: "0.7 mi",
-    categories: ["Bohemian", "Summer Vibes"],
+    categories: ["Sustainable", "Summer", "Eco"],
     aspectRatio: "1/1", // Square
+    color: "#98FB98" // Primary color
   },
   {
     id: 11,
-    image: "/images/grid/outfit3.jpg",
-    title: "Designer Casual Mix",
+    image: "/images/uploads/fashion-festival-outfit.jpg",
+    title: "Designer Weekend Capsule",
+    description: "Curated designer weekend pieces that mix and match perfectly",
     user: {
-      name: "Amelia Johnson",
+      name: "Zoe Johnson",
+      username: "zoecapsule",
       avatar: "/images/avatars/zoe.jpg",
     },
-    likes: 154,
+    likes: 2254,
     price: "$55/day",
     available: false, 
-    availableFrom: "June 15",
+    availableFrom: "May 30",
     distance: "1.9 mi",
-    categories: ["Luxury", "Casual"],
+    categories: ["Designer", "Capsule", "Weekend"],
     aspectRatio: "3/4", // Medium tall
+    color: "#C39BD3" // Primary color
   },
   {
     id: 12,
-    image: "/images/grid/outfit2.jpg",
-    title: "Metropolitan Style Guide",
+    image: "/images/uploads/fashion-coastal-sunset.jpg",
+    title: "Urban Explorer Collection",
+    description: "City-ready pieces designed for versatility and movement",
     user: {
-      name: "Ethan Davis",
+      name: "Marcus Davis",
+      username: "marcusurban",
       avatar: "/images/avatars/marcus.jpg",
     },
-    likes: 92,
+    likes: 1892,
     price: "$40/day",
     available: true,
     distance: "2.2 mi",
-    categories: ["Urban", "Everyday"],
+    categories: ["Urban", "Streetwear", "City"],
     aspectRatio: "2/3", // Tall
+    color: "#778899" // Primary color
   },
 ]
+
+// Define filter categories for Pexels-inspired filter bar
+const filterCategories = [
+  "All Styles",
+  "Dresses",
+  "Tops",
+  "Bottoms",
+  "Outerwear",
+  "Footwear",
+  "Accessories",
+  "Formal",
+  "Casual",
+  "Streetwear",
+  "Vintage",
+  "Designer",
+  "Sustainable"
+];
 
 export default function MasonryGrid() {
   const [likedItems, setLikedItems] = useState<number[]>([])
   const [savedItems, setSavedItems] = useState<number[]>([])
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid")
+  const [activeFilter, setActiveFilter] = useState("All Styles")
+  const [hoveredItem, setHoveredItem] = useState<number | null>(null)
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const filterScrollRef = useRef<HTMLDivElement>(null)
   
   const toggleLike = (itemId: number) => {
     setLikedItems((prev) => 
@@ -220,181 +277,351 @@ export default function MasonryGrid() {
     }
   }
   
-  // Helper function to handle aspect ratio
-  const getPaddingBottomForAspectRatio = (aspectRatio: string): string => {
-    const [width, height] = aspectRatio.split('/')
-    const percentage = (parseInt(height) / parseInt(width)) * 100
-    return `${percentage}%`
-  }
+  // Horizontal scroll for filters
+  const scrollLeft = () => {
+    if (filterScrollRef.current) {
+      filterScrollRef.current.scrollBy({ left: -200, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    if (filterScrollRef.current) {
+      filterScrollRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+    }
+  };
   
   return (
-    <div className="py-2">
-      {/* View options header */}
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-lg font-bold text-white">
-          Explore Available Styles
+    <div className="max-w-7xl mx-auto">
+      {/* Main Title Inspired by Pexels */}
+      <div className="mb-8 flex flex-col">
+        <h2 className="text-3xl font-bold text-white mb-2">
+          Free Fashion Photos
         </h2>
-        
-        <div className="flex items-center border border-white/10 rounded-full p-0.5">
-          <button
-            onClick={() => setViewMode("grid")}
-            className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-              viewMode === "grid"
-                ? "bg-white text-[#0f0f0f]"
-                : "text-white/70 hover:text-white"
-            }`}
-          >
-            Grid
-          </button>
-          <button
-            onClick={() => setViewMode("map")}
-            className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-              viewMode === "map"
-                ? "bg-white text-[#0f0f0f]"
-                : "text-white/70 hover:text-white"
-            }`}
-          >
-            Map
-          </button>
+        <div className="flex justify-between items-center">
+          <div className="flex space-x-3 text-white/70 text-sm">
+            <button className="font-medium text-white border-b-2 border-white pb-1">
+              Photos <span className="opacity-70 ml-1">697K</span>
+            </button>
+            <button className="hover:text-white transition-colors">
+              Videos <span className="opacity-70 ml-1">55K</span>
+            </button>
+            <button className="hover:text-white transition-colors">
+              Users <span className="opacity-70 ml-1">3.3K</span>
+            </button>
+          </div>
+          
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className="flex items-center space-x-2 border border-white/20 rounded-lg px-3 py-2 text-white hover:bg-white/5 transition-colors"
+            >
+              <Filter className="w-4 h-4" />
+              <span className="text-sm">Filters</span>
+            </button>
+            
+            <div className="flex items-center space-x-1 border border-white/20 rounded-lg overflow-hidden">
+              <button 
+                onClick={() => setViewMode("grid")}
+                className={`px-3 py-2 text-sm ${viewMode === "grid" ? "bg-white/10 text-white" : "text-white/70 hover:text-white"}`}
+              >
+                <Grid className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => setViewMode("map")}
+                className={`px-3 py-2 text-sm ${viewMode === "map" ? "bg-white/10 text-white" : "text-white/70 hover:text-white"}`}
+              >
+                <Layers className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
       
-      {viewMode === "grid" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {fashionItems.map((item) => (
-            <motion.div 
-              key={item.id}
-              className="rounded-xl overflow-hidden bg-[#1a1a1a] shadow-md hover:shadow-xl"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              whileHover={{ 
-                y: -4, 
-                transition: { duration: 0.2 }
-              }}
-              onDoubleClick={() => handleDoubleTap(item.id)}
+      {/* Filter pills - Pexels inspired */}
+      <div className="relative mb-8 overflow-hidden">
+        {/* Left scroll button */}
+        <button 
+          onClick={scrollLeft}
+          className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 bg-gradient-to-r from-black to-transparent pr-5 pl-1 h-full flex items-center"
+        >
+          <div className="bg-white/10 hover:bg-white/20 rounded-full p-1.5 transition-colors">
+            <X className="w-4 h-4 text-white rotate-45" />
+          </div>
+        </button>
+        
+        <div 
+          ref={filterScrollRef}
+          className="flex space-x-2 py-2 overflow-x-auto whitespace-nowrap px-1"
+          style={{ 
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
+          <style jsx>{`
+            div::-webkit-scrollbar {
+              display: none;
+            }
+          `}</style>
+          {filterCategories.map((category) => (
+            <button
+              key={category}
+              onClick={() => setActiveFilter(category)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                activeFilter === category
+                  ? "bg-white text-black"
+                  : "bg-white/10 text-white hover:bg-white/20"
+              }`}
             >
-              {/* Image Container */}
-              <div className="relative group cursor-pointer">
-                <div 
-                  className="relative overflow-hidden"
-                  style={{ 
-                    paddingBottom: getPaddingBottomForAspectRatio(item.aspectRatio),
-                  }}
-                >
-                  {/* Image placeholder - in production, use real images */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
-                    <div className="text-white/50 font-semibold">{item.title}</div>
+              {category}
+            </button>
+          ))}
+        </div>
+        
+        {/* Right scroll button */}
+        <button 
+          onClick={scrollRight}
+          className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 bg-gradient-to-l from-black to-transparent pl-5 pr-1 h-full flex items-center"
+        >
+          <div className="bg-white/10 hover:bg-white/20 rounded-full p-1.5 transition-colors">
+            <ArrowRight className="w-4 h-4 text-white" />
+          </div>
+        </button>
+      </div>
+      
+      {/* Advanced filter panel */}
+      <AnimatePresence>
+        {isFilterOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="bg-[#1a1a1a] border border-white/10 rounded-xl p-5 mb-8"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-white">Advanced Filters</h3>
+              <button 
+                onClick={() => setIsFilterOpen(false)}
+                className="text-white/70 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Price Range */}
+              <div>
+                <label className="text-white text-sm font-medium block mb-2">
+                  Price Range
+                </label>
+                <div className="flex items-center space-x-3">
+                  <div className="relative flex-1">
+                    <input 
+                      type="text" 
+                      placeholder="Min"
+                      className="w-full bg-[#222] text-white border border-white/20 rounded-lg py-2 pl-6 pr-2 text-sm focus:outline-none focus:border-[#ff65c5]"
+                    />
+                    <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-white/50">$</span>
                   </div>
-                  
-                  {/* Hover overlay */}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
-                    <button className="bg-[#ff65c5] text-white font-medium py-2 px-4 rounded-full flex items-center text-sm transform scale-90 group-hover:scale-100 transition-transform duration-200">
-                      View Details
-                      <ArrowRight className="w-4 h-4 ml-1" />
-                    </button>
+                  <div className="relative flex-1">
+                    <input 
+                      type="text" 
+                      placeholder="Max"
+                      className="w-full bg-[#222] text-white border border-white/20 rounded-lg py-2 pl-6 pr-2 text-sm focus:outline-none focus:border-[#ff65c5]"
+                    />
+                    <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-white/50">$</span>
                   </div>
-                </div>
-                
-                {/* Save button */}
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    toggleSave(item.id)
-                  }}
-                  className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center group-hover:opacity-100 opacity-80"
-                >
-                  <Bookmark 
-                    className={`w-4 h-4 ${
-                      savedItems.includes(item.id) 
-                        ? "text-[#c7aeef] fill-[#c7aeef]" 
-                        : "text-white"
-                    }`} 
-                  />
-                </button>
-
-                {/* Price tag */}
-                <div className="absolute bottom-3 right-3 z-10 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-sm font-bold group-hover:opacity-100 opacity-90">
-                  {item.price}
                 </div>
               </div>
               
-              {/* Content */}
-              <div className="p-3">
-                {/* Title */}
-                <h3 className="text-white font-medium text-base mb-2 line-clamp-1">{item.title}</h3>
-                
-                {/* User info */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-2 flex-shrink-0">
-                    <Avatar className="w-6 h-6">
-                      <AvatarImage src={item.user.avatar} alt={item.user.name} />
-                      <AvatarFallback className="bg-[#333] text-white text-xs">
-                        {item.user.name[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-white/80 text-xs line-clamp-1">{item.user.name}</span>
-                  </div>
-                </div>
-                
-                {/* Distance and availability */}
-                <div className="flex justify-between items-center mb-2 text-xs">
-                  <div className="flex items-center text-white/60">
-                    <MapPin className="w-3 h-3 mr-1" />
-                    {item.distance}
-                  </div>
-                  <div className={`flex items-center ${item.available ? 'text-green-400' : 'text-amber-400'}`}>
-                    <Clock className="w-3 h-3 mr-1" />
-                    {item.available ? 'Available Now' : `Available ${(item as any).availableFrom}`}
-                  </div>
-                </div>
-                
-                {/* Categories */}
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {item.categories.map((category) => (
-                    <span 
-                      key={`${item.id}-${category}`}
-                      className="px-2 py-0.5 bg-[#2a2a2a] rounded-full text-white/70 text-[10px]"
-                    >
-                      {category}
-                    </span>
-                  ))}
-                </div>
-                
-                {/* Action buttons */}
-                <div className="flex justify-between items-center border-t border-white/5 pt-3">
-                  <div className="flex items-center space-x-1">
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleLike(item.id)
-                      }}
-                      className="flex items-center text-white/70 hover:text-white"
-                    >
-                      <Heart 
-                        className={`w-4 h-4 mr-1 ${
-                          likedItems.includes(item.id) 
-                            ? "text-[#ff65c5] fill-[#ff65c5]" 
-                            : ""
-                        }`} 
-                      />
-                      <span className="text-xs">{item.likes}</span>
-                    </button>
-                    
-                    <button className="w-6 h-6 flex items-center justify-center text-white/70 hover:text-white">
-                      <MessageCircle className="w-4 h-4" />
-                    </button>
-                    
-                    <button className="w-6 h-6 flex items-center justify-center text-white/70 hover:text-white">
-                      <Share className="w-4 h-4" />
-                    </button>
-                  </div>
-                  
-                  <button className="bg-gradient-to-r from-[#ff65c5] to-[#c7aeef] text-white text-xs font-medium py-1.5 px-3 rounded-full hover:shadow-[0_0_10px_rgba(255,101,197,0.3)] transition-shadow">
-                    Borrow
-                  </button>
+              {/* Availability */}
+              <div>
+                <label className="text-white text-sm font-medium block mb-2">
+                  Availability
+                </label>
+                <div className="space-y-2">
+                  <label className="flex items-center text-white">
+                    <input type="checkbox" className="mr-2 accent-[#ff65c5]" />
+                    <span className="text-sm">Available Now</span>
+                  </label>
+                  <label className="flex items-center text-white">
+                    <input type="checkbox" className="mr-2 accent-[#ff65c5]" />
+                    <span className="text-sm">Available This Weekend</span>
+                  </label>
                 </div>
               </div>
+              
+              {/* Distance */}
+              <div>
+                <label className="text-white text-sm font-medium block mb-2">
+                  Distance
+                </label>
+                <select className="w-full bg-[#222] text-white border border-white/20 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-[#ff65c5] appearance-none">
+                  <option>Within 5 miles</option>
+                  <option>Within 10 miles</option>
+                  <option>Within 25 miles</option>
+                  <option>Any distance</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="flex justify-end mt-6 space-x-3">
+              <button className="px-4 py-2 border border-white/20 rounded-lg text-white text-sm hover:bg-white/5 transition-colors">
+                Reset
+              </button>
+              <button className="px-4 py-2 bg-gradient-to-r from-[#ff65c5] to-[#c7aeef] text-white text-sm rounded-lg">
+                Apply Filters
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {viewMode === "grid" ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {fashionItems.map((item) => (
+            <motion.div 
+              key={item.id}
+              className="relative rounded-xl overflow-hidden"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              whileHover={{ y: -5 }}
+              onMouseEnter={() => setHoveredItem(item.id)}
+              onMouseLeave={() => setHoveredItem(null)}
+              onDoubleClick={() => handleDoubleTap(item.id)}
+            >
+              {/* Main Image */}
+              <Link href="#">
+                <div className="relative aspect-[5/6] overflow-hidden bg-gray-900 rounded-xl">
+                  <div className="absolute inset-0">
+                    <Image
+                      src={item.image}
+                      alt={item.title}
+                      fill
+                      className="object-cover transition-transform duration-700"
+                      style={{
+                        transform: hoveredItem === item.id ? 'scale(1.05)' : 'scale(1)',
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Color overlay on hover */}
+                  <motion.div 
+                    className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"
+                    initial={{ opacity: 0.6 }}
+                    animate={{ 
+                      opacity: hoveredItem === item.id ? 0.8 : 0.6,
+                      background: hoveredItem === item.id 
+                        ? `linear-gradient(to top, #000, rgba(0,0,0,0.4), transparent)`
+                        : 'linear-gradient(to top, #000, rgba(0,0,0,0.2), transparent)'
+                    }}
+                    transition={{ duration: 0.3 }}
+                  />
+                  
+                  {/* Quick action buttons - appear on hover */}
+                  <AnimatePresence>
+                    {hoveredItem === item.id && (
+                      <motion.div 
+                        className="absolute top-4 right-4 flex space-x-2"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            toggleSave(item.id)
+                          }}
+                          className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors"
+                        >
+                          <Bookmark 
+                            className={`w-4 h-4 ${
+                              savedItems.includes(item.id) 
+                                ? "text-[#c7aeef] fill-[#c7aeef]" 
+                                : "text-white"
+                            }`} 
+                          />
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            toggleLike(item.id)
+                          }}
+                          className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors"
+                        >
+                          <Heart 
+                            className={`w-4 h-4 ${
+                              likedItems.includes(item.id) 
+                                ? "text-[#ff65c5] fill-[#ff65c5]" 
+                                : "text-white"
+                            }`} 
+                          />
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  
+                  {/* Price tag */}
+                  <div className="absolute top-4 left-4 px-3 py-1 rounded-lg bg-black/60 backdrop-blur-sm text-white text-sm font-medium">
+                    {item.price}
+                  </div>
+                  
+                  {/* Item info footer */}
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Avatar className="w-8 h-8 border-2 border-white/20">
+                          <AvatarImage src={item.user.avatar} alt={item.user.name} />
+                          <AvatarFallback className="bg-[#333] text-white">
+                            {item.user.name[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-white font-medium text-sm line-clamp-1">
+                            {item.title}
+                          </p>
+                          <p className="text-white/70 text-xs">
+                            @{item.user.username}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center">
+                        <Heart className={`w-4 h-4 mr-1 ${
+                          likedItems.includes(item.id) 
+                            ? "text-[#ff65c5] fill-[#ff65c5]" 
+                            : "text-white/90"
+                        }`} />
+                        <span className="text-white text-xs">
+                          {(item.likes / 1000).toFixed(1)}k
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* View details button - appears on hover */}
+                    <AnimatePresence>
+                      {hoveredItem === item.id && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          transition={{ duration: 0.2, delay: 0.1 }}
+                          className="mt-3"
+                        >
+                          <button className="w-full py-2 bg-gradient-to-r from-[#ff65c5] to-[#c7aeef] text-white text-sm font-medium rounded-lg flex items-center justify-center">
+                            <span className="mr-1">Borrow Now</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </Link>
             </motion.div>
           ))}
         </div>
@@ -419,11 +646,15 @@ export default function MasonryGrid() {
         </div>
       )}
       
-      {/* Load more button */}
-      <div className="mt-8 text-center">
-        <button className="bg-white/10 hover:bg-white/15 text-white font-medium py-2.5 px-6 rounded-full transition-colors">
-          Load More Styles
-        </button>
+      {/* Load more button - Pexels style */}
+      <div className="mt-10 text-center">
+        <motion.button 
+          className="inline-flex items-center justify-center px-8 py-3 bg-white text-black font-medium rounded-lg hover:bg-white/90 transition-colors"
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          Load More
+        </motion.button>
       </div>
     </div>
   )
