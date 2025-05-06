@@ -17,8 +17,8 @@ export default function ProfilePage() {
   const [userProfile, setUserProfile] = useState({
     fullName: "",
     username: "",
-    bio: "",
-    profilePic: ""
+    profilePic: "",
+    biography: ""
   })
 
   const loadUserProfile = async () => {
@@ -48,22 +48,54 @@ export default function ProfilePage() {
           const parsedProfile = JSON.parse(localProfile)
           setUserProfile({
             fullName: parsedProfile.fullName || data.session.user.user_metadata?.full_name || "User",
-            username: parsedProfile.username || data.session.user.user_metadata?.username || data.session.user.email?.split('@')[0] || "username",
-            bio: parsedProfile.bio || data.session.user.user_metadata?.bio || "No bio yet. Edit your profile to add one!",
-            profilePic: data.session.user.user_metadata?.avatar_url || ""
+            username: parsedProfile.username || data.session.user.user_metadata?.user_name || data.session.user.email?.split('@')[0] || "username",
+            profilePic: data.session.user.user_metadata?.avatar_url || "",
+            biography: parsedProfile.biography || ""
           })
-          return
         } catch (e) {
           console.error("Error parsing profile from localStorage", e)
         }
       }
       
-      // Set profile data from Supabase
+      // Intentar obtener datos de la tabla User
+      try {
+        const { data: userData, error: userError } = await supabase
+          .from('user')
+          .select('*')
+          .eq('id', data.session.user.id)
+          .single()
+          
+        if (!userError && userData) {
+          console.log("User data from database:", userData)
+          
+          // Actualizar el perfil con datos de la base de datos
+          setUserProfile(prevProfile => ({
+            ...prevProfile,
+            fullName: userData.full_name || prevProfile.fullName,
+            username: userData.user_name || prevProfile.username
+          }))
+          
+          // Actualizar localStorage con estos datos más recientes
+          const updatedProfile = {
+            fullName: userData.full_name || userProfile.fullName || data.session.user.user_metadata?.full_name || "User",
+            username: userData.user_name || userProfile.username || data.session.user.user_metadata?.user_name || data.session.user.email?.split('@')[0] || "username",
+            email: userData.mail || data.session.user.email || "",
+            biography: userData.biography || ""
+          }
+          localStorage.setItem('userProfile', JSON.stringify(updatedProfile))
+          
+          return
+        }
+      } catch (dbError) {
+        console.error("Error fetching user data from User table:", dbError)
+      }
+      
+      // Si no hay datos en la base de datos o hubo error, usar los metadatos de auth
       setUserProfile({
         fullName: data.session.user.user_metadata?.full_name || "User",
-        username: data.session.user.user_metadata?.username || data.session.user.email?.split('@')[0] || "username",
-        bio: data.session.user.user_metadata?.bio || "No bio yet. Edit your profile to add one!",
-        profilePic: data.session.user.user_metadata?.avatar_url || ""
+        username: data.session.user.user_metadata?.user_name || data.session.user.email?.split('@')[0] || "username",
+        profilePic: data.session.user.user_metadata?.avatar_url || "",
+        biography: ""
       })
     } catch (error) {
       console.error("Profile page error:", error)
@@ -92,8 +124,7 @@ export default function ProfilePage() {
         setUserProfile(prev => ({
           ...prev,
           fullName: event.detail.fullName || prev.fullName,
-          username: event.detail.username || prev.username,
-          bio: event.detail.bio || prev.bio
+          username: event.detail.username || prev.username
         }))
       }
     }
@@ -108,8 +139,7 @@ export default function ProfilePage() {
         setUserProfile(prev => ({
           ...prev,
           fullName: session.user.user_metadata?.full_name || prev.fullName,
-          username: session.user.user_metadata?.username || prev.username,
-          bio: session.user.user_metadata?.bio || prev.bio
+          username: session.user.user_metadata?.user_name || prev.username
         }))
       }
     })
@@ -219,14 +249,15 @@ export default function ProfilePage() {
                       <LogOut className="w-4 h-4 mr-1.5" />
                       <span>Sign Out</span>
                     </button>
+
                   </div>
                 </div>
                 
                 <div className="mt-6 space-y-4">
                   <div>
-                    <h2 className="text-lg font-semibold">About</h2>
+                    <h2 className="text-lg font-semibold">Biography</h2>
                     <p className="text-gray-300 mt-1">
-                      {userProfile.bio}
+                      {userProfile.biography}
                     </p>
                   </div>
                   

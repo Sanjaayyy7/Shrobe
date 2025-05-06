@@ -17,8 +17,8 @@ export default function SettingsPage() {
   const [formData, setFormData] = useState({
     fullName: "",
     username: "",
-    bio: "",
-    email: ""
+    email: "",
+    biography: ""
   })
   const [originalUsername, setOriginalUsername] = useState("")
   const [saveSuccess, setSaveSuccess] = useState(false)
@@ -51,15 +51,15 @@ export default function SettingsPage() {
         console.log("Current user metadata:", data.session.user.user_metadata)
         
         // Get username from metadata or email
-        const currentUsername = data.session.user.user_metadata?.username || data.session.user.email?.split('@')[0] || ""
+        const currentUsername = data.session.user.user_metadata?.user_name || data.session.user.email?.split('@')[0] || ""
         setOriginalUsername(currentUsername)
         
         // Initialize form with user data
         setFormData({
           fullName: data.session.user.user_metadata?.full_name || "",
           username: currentUsername,
-          bio: data.session.user.user_metadata?.bio || "",
-          email: data.session.user.email || ""
+          email: data.session.user.email || "",
+          biography: data.session.user.user_metadata?.biography || ""
         })
         
       } catch (error) {
@@ -79,7 +79,8 @@ export default function SettingsPage() {
           ...prev,
           fullName: event.detail.fullName || prev.fullName,
           username: event.detail.username || prev.username,
-          bio: event.detail.bio || prev.bio
+          email: event.detail.email || prev.email,
+          biography: event.detail.biography || prev.biography
         }))
       }
     }
@@ -101,11 +102,11 @@ export default function SettingsPage() {
     setCheckingUsername(true)
     
     try {
-      // Check if username exists in profiles table
+      // Check if username exists in User table
       const { data: existingUsers, error } = await supabase
-        .from('profiles')  // Assuming you have a profiles table
-        .select('username')
-        .eq('username', username)
+        .from('user')
+        .select('user_name')
+        .eq('user_name', username)
         .limit(1)
       
       if (error) {
@@ -131,6 +132,9 @@ export default function SettingsPage() {
       setCheckingUsername(false)
     }
   }
+
+  // Función de utilidad para retrasos
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -165,15 +169,6 @@ export default function SettingsPage() {
     setSaveSuccess(false)
     setSaveError("")
     
-    if (
-      formData.fullName === user?.user_metadata?.full_name &&
-      formData.username === originalUsername &&
-      formData.bio === user?.user_metadata?.bio
-    ) {
-      setSaveError("You haven’t changed anything.")
-      setSaving(false)
-      return
-    }
     
     // Final validation checks before save
     if (formData.username.trim() === "") {
@@ -202,24 +197,47 @@ export default function SettingsPage() {
     try {
       console.log("Updating user profile with:", {
         full_name: formData.fullName,
-        username: formData.username,
-        bio: formData.bio
+        user_name: formData.username,
+        biography: formData.biography
       })
       
-      const { data, error } = await supabase.auth.updateUser({
-        data: {
-          full_name: formData.fullName,
-          username: formData.username,
-          bio: formData.bio
+      // 1. Actualizar metadatos de usuario en Supabase Auth
+      let response;
+      let maxRetries = 3;
+      let retryDelay = 1000;
+      
+      // Intentar actualizar los metadatos con reintento manual para el rate limit
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        response = await supabase.auth.updateUser({
+          data: {
+            full_name: formData.fullName,
+            user_name: formData.username,
+            biography: formData.biography
+          }
+        });
+        
+        // Si no hay error o si el error no es de rate limit, salimos del bucle
+        if (!response.error || !response.error.message?.includes('rate limit')) {
+          break;
         }
-      })
+        
+        // Si llegamos aquí, hubo un error de rate limit, esperamos y reintentamos
+        console.log(`Rate limit hit, retrying (${attempt + 1}/${maxRetries})...`);
+        const delay = retryDelay * Math.pow(2, attempt) * (0.75 + Math.random() * 0.5);
+        await sleep(delay);
+      }
+      
+      // Verificar el resultado final
+      const { data, error } = response || { data: null, error: null };
       
       if (error) {
-        console.error("Error updating profile:", error)
+        console.error("Error updating auth user metadata:", error)
         
         // Check if the error is related to username being taken
         if (error.message && error.message.includes("username")) {
           setSaveError("This username is already taken. Please choose another one.")
+        } else if (error.message && error.message.includes("rate limit")) {
+          setSaveError("Server is busy. Please wait a moment and try again.")
         } else {
           setSaveError(error.message || "Failed to update profile. Please try again.")
         }
@@ -227,61 +245,179 @@ export default function SettingsPage() {
         return
       }
       
-      console.log("Profile updated successfully:", data)
+      console.log("Auth metadata updated successfully:", data)
       
-      // Actualizar en la tabla profiles
+      // 2. Actualizar en la tabla User
       if (!user || !user.id) {
-        console.error("User session not available — cannot update profile")
+        console.error("User session not available — cannot update user record")
         setSaveError("User session not available. Please reload and try again.")
         setSaving(false)
         return
       }
 
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          username: formData.username,
-          full_name: formData.fullName,
-          bio: formData.bio,
-          updated_at: new Date().toISOString()
-        })
-      
-      if (profileError) {
-        console.error("Error updating profile table:", profileError)
-        setSaveError("Profile was partially updated. Please try again.")
-        setSaving(false)
-        return
+      // Verificar primero si el usuario existe en la tabla
+      let existingUser = null;
+      try {
+        const { data: userData, error: fetchError } = await supabase
+          .from('User')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+          
+        if (fetchError) {
+          console.error("Error fetching existing user record:", fetchError);
+          
+          // Si el error es "No rows found", significa que el usuario no existe y debemos crearlo
+          if (fetchError.message?.includes('No rows found')) {
+            console.log("No user record found, will create a new one");
+            // No hacemos return, continuamos con la creación del usuario
+          } else {
+            // Para otros errores, intentamos continuar con la operación de upsert
+            console.log("Error querying user, will attempt upsert anyway:", fetchError);
+          }
+        } else {
+          existingUser = userData;
+          console.log("Existing user record:", existingUser);
+        }
+      } catch (fetchErr) {
+        console.error("Exception while fetching user record:", fetchErr);
+        // Continuamos con la actualización, aunque la verificación haya fallado
+      }
+
+      // Reintentos para la actualización de la tabla User
+      let userRecordResponse;
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          // Preparar los datos del usuario asegurándonos que todos los campos requeridos estén presentes
+          const userData: Record<string, any> = {
+            id: user.id,
+            mail: user.email || "", // Asegurar que mail no esté vacío
+            user_name: formData.username,
+            full_name: formData.fullName,
+            biography: formData.biography
+          };
+          
+          // Si es un usuario nuevo, agregar created_at
+          if (!existingUser) {
+            userData.created_at = new Date().toISOString();
+          }
+          
+          console.log("Attempting to upsert user data:", userData);
+          
+          // Usamos .upsert() para asegurarnos de que funcione incluso si el registro no existe
+          userRecordResponse = await supabase
+            .from('User')
+            .upsert(
+              userData,
+              { 
+                onConflict: 'id'
+              }
+            );
+            
+          console.log("User record upsert response:", userRecordResponse);
+          
+          // Si no hay error o si el error no es de rate limit, salimos del bucle
+          if (!userRecordResponse.error || !userRecordResponse.error.message?.includes('rate limit')) {
+            break;
+          }
+        } catch (upsertErr) {
+          console.error(`Attempt ${attempt + 1} failed with exception:`, upsertErr);
+          // Continuamos con el siguiente intento
+        }
+        
+        // Si llegamos aquí, hubo un error de rate limit, esperamos y reintentamos
+        console.log(`Rate limit hit on user record update, retrying (${attempt + 1}/${maxRetries})...`);
+        const delay = retryDelay * Math.pow(2, attempt) * (0.75 + Math.random() * 0.5);
+        await sleep(delay);
       }
       
-      setUser(data.user)
-      setSaveSuccess(true)
-      setOriginalUsername(formData.username)
+      // Si el userRecordResponse es undefined después de todos los intentos, creamos un error genérico
+      const { error: userRecordError } = userRecordResponse || { error: { message: "Failed to update user record after multiple attempts" } };
       
-      // Actualizar localStorage con los datos de usuario actualizados
-      const profileData = {
-        fullName: formData.fullName,
-        username: formData.username,
-        bio: formData.bio,
-        email: formData.email
+      if (userRecordError) {
+        console.error("Error updating User table:", userRecordError);
+        
+        // Errores específicos conocidos
+        const errorCode = (userRecordError as any).code;
+        
+        // Username duplicado
+        if (errorCode === '23505' && userRecordError.message?.includes('user_name')) {
+          setSaveError("This username is already taken in the database. Please choose another one.");
+          setSaving(false);
+          return;
+        }
+        
+        // Rate limit
+        if (userRecordError.message?.includes('rate limit')) {
+          setSaveError("Too many requests. Please wait a moment and try again.");
+          setSaving(false);
+          return;
+        }
+        
+        // Error de permisos o policy
+        if (errorCode === '42501' || userRecordError.message?.includes('policy')) {
+          setSaveError("You don't have permission to update this user record. This could be due to security restrictions.");
+          setSaving(false);
+          return;
+        }
+        
+        // Si ya actualizamos los metadatos, intentamos revertir
+        try {
+          await supabase.auth.updateUser({
+            data: {
+              full_name: user.user_metadata?.full_name,
+              user_name: originalUsername,
+              biography: user.user_metadata?.biography
+            }
+          });
+          
+          setSaveError("User record update failed. Changes have been reverted. Please try again later.");
+        } catch (revertError) {
+          console.error("Failed to revert auth metadata after user record update failure:", revertError);
+          setSaveError("User record was partially updated but database sync failed. Please reload and try again.");
+        }
+        
+        setSaving(false);
+        return;
       }
-      localStorage.setItem('userProfile', JSON.stringify(profileData))
       
-      // Emitir evento personalizado para actualizar componentes que muestran datos del usuario
-      const updateEvent = new CustomEvent('userProfileUpdated', {
-        detail: {
+      // 3. Actualizar el estado local y localStorage
+      if (data && data.user) {
+        setUser(data.user);
+        setSaveSuccess(true);
+        setOriginalUsername(formData.username);
+        
+        // Actualizar localStorage con los datos de usuario actualizados
+        const localUserData = {
           fullName: formData.fullName,
           username: formData.username,
-          bio: formData.bio
-        }
-      })
-      window.dispatchEvent(updateEvent)
+          email: formData.email,
+          biography: formData.biography
+        };
+        localStorage.setItem('userProfile', JSON.stringify(localUserData));
+        
+        // 4. Emitir evento para actualizar UI en otros componentes
+        const updateEvent = new CustomEvent('userProfileUpdated', {
+          detail: {
+            fullName: formData.fullName,
+            username: formData.username,
+            biography: formData.biography
+          }
+        });
+        window.dispatchEvent(updateEvent);
+        
+        // 5. Mostrar mensaje de éxito
+        console.log("User record updated successfully, both auth and User table");
+      } else {
+        console.error("Missing user data in response");
+        setSaveError("User record update was partially successful. Please refresh and try again.");
+      }
       
     } catch (err) {
-      console.error("Exception during profile update:", err)
-      setSaveError("An error occurred. Please try again.")
+      console.error("Exception during user record update:", err);
+      setSaveError("An unexpected error occurred. Please try again later.");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
@@ -385,21 +521,6 @@ export default function SettingsPage() {
                 </div>
                 
                 <div>
-                  <label htmlFor="bio" className="block text-sm font-medium text-gray-300 mb-1">
-                    Bio
-                  </label>
-                  <textarea
-                    id="bio"
-                    name="bio"
-                    rows={4}
-                    value={formData.bio}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2.5 bg-black/40 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-colors resize-none"
-                    placeholder="Tell us about yourself..."
-                  />
-                </div>
-                
-                <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
                     Email
                   </label>
@@ -412,6 +533,19 @@ export default function SettingsPage() {
                     className="w-full px-4 py-2.5 bg-black/60 border border-white/10 rounded-lg text-gray-400 cursor-not-allowed"
                   />
                   <p className="mt-1 text-xs text-gray-500">Email cannot be changed</p>
+                </div>
+
+                <div>
+                  <label htmlFor="biography" className="block text-sm font-medium text-gray-300 mb-1">
+                    Biography
+                  </label>
+                  <textarea
+                    id="biography"
+                    name="biography"
+                    value={formData.biography}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 bg-black/40 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-colors"
+                  />
                 </div>
                 
                 <div className="pt-4">

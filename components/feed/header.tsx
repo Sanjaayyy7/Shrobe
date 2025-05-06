@@ -7,13 +7,12 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Search, Bell, MessageSquare, User, Plus, Menu, Home, LogOut, Settings, UserCircle} from "lucide-react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
-// Define un tipo para el evento personalizado de actualización de usuario
+// Define a type for the custom user update event
 declare global {
   interface WindowEventMap {
     'userProfileUpdated': CustomEvent<{
       fullName?: string;
       username?: string;
-      bio?: string;
     }>;
   }
 }
@@ -34,7 +33,7 @@ export default function Header() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        // Intentar obtener datos desde localStorage primero para mostrarlos inmediatamente
+        // Try to get data from localStorage first to display immediately
         const cachedUserData = localStorage.getItem('userProfile')
         if (cachedUserData) {
           const userData = JSON.parse(cachedUserData)
@@ -44,7 +43,7 @@ export default function Header() {
           }
         }
         
-        // Luego obtener datos actualizados de Supabase
+        // Then get updated data from Supabase
         const { data, error } = await supabase.auth.getSession()
         
         if (error || !data.session) {
@@ -54,7 +53,7 @@ export default function Header() {
         
         setUser(data.session.user)
         
-        // Si no hay datos en localStorage o no hemos actualizado el nombre
+        // If there's no data in localStorage or we haven't updated the name
         if (!userNameUpdated) {
           // Get display name from user metadata or email
           const fullName = data.session.user.user_metadata?.full_name
@@ -69,7 +68,7 @@ export default function Header() {
             setUserName("User")
           }
           
-          // Actualizar localStorage con los datos del usuario
+          // Update localStorage with user data
           saveUserProfileToLocalStorage(data.session.user)
         }
       } catch (err) {
@@ -79,8 +78,8 @@ export default function Header() {
     
     fetchUserData()
     
-    // Escuchar evento personalizado para actualización de perfil
-    const handleProfileUpdate = (event: CustomEvent<{fullName?: string, username?: string, bio?: string}>) => {
+    // Listen for custom event for profile updates
+    const handleProfileUpdate = (event: CustomEvent<{fullName?: string, username?: string}>) => {
       console.log("Header received profile update event:", event.detail)
       if (event.detail.fullName) {
         setUserName(event.detail.fullName)
@@ -95,12 +94,11 @@ export default function Header() {
     }
   }, [supabase, userNameUpdated])
 
-  // Guardar perfil de usuario en localStorage
+  // Save user profile to localStorage
   const saveUserProfileToLocalStorage = (userData: any) => {
     const profileData = {
       fullName: userData.user_metadata?.full_name || "",
-      username: userData.user_metadata?.username || userData.email?.split('@')[0] || "",
-      bio: userData.user_metadata?.bio || "",
+      username: userData.user_metadata?.user_name || userData.email?.split('@')[0] || "",
       email: userData.email || ""
     }
     
@@ -134,7 +132,7 @@ export default function Header() {
   // Sign out function
   const handleSignOut = async () => {
     try {
-      localStorage.removeItem('userProfile') // Limpiar datos del usuario al cerrar sesión
+      localStorage.removeItem('userProfile') // Clear user data when signing out
       const { error } = await supabase.auth.signOut()
       if (error) {
         console.error("Error signing out:", error)

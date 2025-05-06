@@ -12,6 +12,8 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fullName, setFullName] = useState('')
+  const [username, setUsername] = useState('')
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,10 +37,30 @@ export default function SignupPage() {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: fullName,
+            user_name: username
+          }
+        }
       })
 
       if (error) {
         throw error
+      }
+
+      const { error: insertError } = await supabase.from('user').insert({
+        id: data?.user?.id,
+        mail: email,
+        user_name: username,
+        full_name: fullName,
+        created_at: new Date().toISOString()
+      })
+
+      if (insertError) {
+        console.error("Error inserting into User table:", insertError)
+        // Continue with auth signup even if User table insert fails
+        // The trigger should handle this, but this is a backup
       }
 
       if (data?.user) {
@@ -91,6 +113,38 @@ export default function SignupPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="appearance-none relative block w-full px-4 py-3 border border-white/20 placeholder-gray-400 text-white rounded-lg bg-black/40 focus:outline-none focus:ring-2 focus:ring-primary-pink focus:border-transparent sm:text-sm"
                 placeholder="Email address"
+              />
+            </div>
+            <div>
+              <label htmlFor="full-name" className="sr-only">
+                Full name
+              </label>
+              <input
+                id="full-name"
+                name="full-name"
+                type="text"
+                autoComplete="full-name"
+                required
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="appearance-none relative block w-full px-4 py-3 border border-white/20 placeholder-gray-400 text-white rounded-lg bg-black/40 focus:outline-none focus:ring-2 focus:ring-primary-pink focus:border-transparent sm:text-sm"
+                placeholder="Full name"
+              />
+            </div>
+            <div>
+              <label htmlFor="username" className="sr-only">
+                Username
+              </label>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                autoComplete="username"
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="appearance-none relative block w-full px-4 py-3 border border-white/20 placeholder-gray-400 text-white rounded-lg bg-black/40 focus:outline-none focus:ring-2 focus:ring-primary-pink focus:border-transparent sm:text-sm"
+                placeholder="Username"
               />
             </div>
             <div>
