@@ -120,17 +120,22 @@ export default function Header() {
   }, [])
 
 
-  // Close profile menu when clicking outside
+  // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false)
       }
+      
+      // Close mobile menu on outside click
+      if (userMenuOpen && !(event.target as Element).closest('.mobile-menu-container')) {
+        setUserMenuOpen(false)
+      }
     }
 
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
+  }, [userMenuOpen])
 
   // Sign out function
   const handleSignOut = async () => {
@@ -206,18 +211,18 @@ export default function Header() {
               />
             </motion.button>
             
-            {/* Mobile Add Button */}
+            {/* Mobile Add Button - Hidden */}
             <motion.button 
-              className="md:hidden flex items-center justify-center w-8 h-8 bg-gradient-to-r from-[#ff65c5] to-[#c7aeef] text-white rounded-full"
+              className="hidden md:hidden flex items-center justify-center w-8 h-8 bg-gradient-to-r from-[#ff65c5] to-[#c7aeef] text-white rounded-full"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
               <Plus className="w-4 h-4" />
             </motion.button>
             
-            {/* Icons */}
+            {/* Icons - Hidden on mobile */}
             <motion.button 
-              className="w-9 h-9 flex items-center justify-center text-white/70 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+              className="hidden md:flex w-9 h-9 items-center justify-center text-white/70 hover:text-white rounded-full hover:bg-white/10 transition-colors"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
@@ -225,7 +230,7 @@ export default function Header() {
             </motion.button>
             
             <motion.button 
-              className="w-9 h-9 flex items-center justify-center text-white/70 hover:text-white rounded-full hover:bg-white/10 transition-colors relative"
+              className="hidden md:flex w-9 h-9 items-center justify-center text-white/70 hover:text-white rounded-full hover:bg-white/10 transition-colors relative"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
@@ -244,15 +249,15 @@ export default function Header() {
             </motion.button>
             
             <motion.button 
-              className="w-9 h-9 flex items-center justify-center text-white/70 hover:text-white rounded-full hover:bg-white/10 transition-colors relative"
+              className="hidden md:flex w-9 h-9 items-center justify-center text-white/70 hover:text-white rounded-full hover:bg-white/10 transition-colors relative"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
               <MessageSquare className="w-5 h-5" />
             </motion.button>
             
-            {/* Profile Button with Dropdown */}
-            <div className="relative" ref={profileMenuRef}>
+            {/* Profile Button with Dropdown - Hidden on mobile */}
+            <div className="hidden md:block relative" ref={profileMenuRef}>
               <motion.button 
                 className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
                   showProfileMenu 
@@ -311,17 +316,77 @@ export default function Header() {
               </AnimatePresence>
             </div>
             
-            {/* Mobile Menu */}
+            {/* Mobile Menu - Keep visible */}
             <motion.button 
               className="md:hidden w-9 h-9 flex items-center justify-center text-white/70 hover:text-white rounded-full hover:bg-white/10 transition-colors"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
+              onClick={() => setUserMenuOpen(!userMenuOpen)}
             >
               <Menu className="w-5 h-5" />
             </motion.button>
           </div>
         </div>
       </div>
+      
+      {/* Mobile dropdown menu */}
+      <AnimatePresence>
+        {userMenuOpen && (
+          <motion.div 
+            className="mobile-menu-container md:hidden absolute top-16 left-0 right-0 bg-black/90 backdrop-blur-lg border-b border-white/10 shadow-xl overflow-hidden z-40"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="container mx-auto px-4 py-4">
+              <div className="flex flex-col space-y-4">
+                <div className="border-b border-white/10 pb-3">
+                  <p className="text-sm font-medium text-white">Hi, {userName}</p>
+                  <p className="text-xs text-gray-400">@{user?.email?.split('@')[0] || "username"}</p>
+                </div>
+                
+                <Link 
+                  href="/profile" 
+                  className="flex items-center space-x-2 py-2.5 text-sm text-white/80"
+                  onClick={() => setUserMenuOpen(false)}
+                >
+                  <UserCircle className="w-4 h-4" />
+                  <span>My Profile</span>
+                </Link>
+                
+                <Link 
+                  href="/settings" 
+                  className="flex items-center space-x-2 py-2.5 text-sm text-white/80"
+                  onClick={() => setUserMenuOpen(false)}
+                >
+                  <Settings className="w-4 h-4" />
+                  <span>Settings</span>
+                </Link>
+                
+                <button 
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    handleSignOut();
+                  }}
+                  className="flex items-center w-full space-x-2 py-2.5 text-sm text-white/80"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </button>
+
+                <button 
+                  className="mt-2 flex items-center justify-center w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-[#ff65c5] to-[#c7aeef] text-white text-sm font-medium"
+                  onClick={() => setUserMenuOpen(false)}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  <span>Add to Closet</span>
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* Animated gradient line at bottom */}
       <div className="absolute left-0 right-0 bottom-0 h-[1px] overflow-hidden">

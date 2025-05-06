@@ -23,7 +23,7 @@ import Header from "@/components/header"
 export default function Home() {
   
   return (
-    <main className="bg-black text-white">
+    <main className="min-h-screen w-full bg-black text-white overflow-x-hidden">
       <div className="fixed inset-0 z-0 pointer-events-none">
         <GradientBackground />
         <AnimatedBackground variant="dots" opacity={0.05} />

@@ -294,9 +294,6 @@ export default function MasonryGrid() {
     <div className="max-w-7xl mx-auto">
       {/* Main Title Inspired by Pexels */}
       <div className="mb-8 flex flex-col">
-        <h2 className="text-3xl font-bold text-white mb-2">
-          Free Fashion Photos
-        </h2>
         <div className="flex justify-between items-center">
           <div className="flex space-x-3 text-white/70 text-sm">
             <button className="font-medium text-white border-b-2 border-white pb-1">
