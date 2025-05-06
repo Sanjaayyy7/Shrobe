@@ -750,28 +750,28 @@ export default function FeedPage() {
             transition={{ duration: 0.5, delay: 1.6 }}
           >
             <div className="flex justify-around items-center">
-              <button className="flex flex-col items-center justify-center">
+              <Link href="/feed" className="flex flex-col items-center justify-center">
                 <Home className="w-6 h-6 text-white" />
                 <span className="text-xs text-white/70 mt-1">Home</span>
-              </button>
-              <button className="flex flex-col items-center justify-center">
+              </Link>
+              <Link href="/search" className="flex flex-col items-center justify-center">
                 <Search className="w-6 h-6 text-white/70" />
                 <span className="text-xs text-white/70 mt-1">Search</span>
-              </button>
-              <button className="flex flex-col items-center justify-center">
+              </Link>
+              <Link href="/share" className="flex flex-col items-center justify-center">
                 <div className="bg-gradient-to-r from-[#ff65c5] to-[#c7aeef] p-1 rounded-full">
                   <CameraIcon className="w-6 h-6 text-white" />
                 </div>
                 <span className="text-xs text-white/70 mt-1">Share</span>
-              </button>
-              <button className="flex flex-col items-center justify-center">
+              </Link>
+              <Link href="/notifications" className="flex flex-col items-center justify-center">
                 <Bell className="w-6 h-6 text-white/70" />
                 <span className="text-xs text-white/70 mt-1">Alerts</span>
-              </button>
-              <button className="flex flex-col items-center justify-center">
+              </Link>
+              <Link href="/profile" className="flex flex-col items-center justify-center">
                 <User className="w-6 h-6 text-white/70" />
                 <span className="text-xs text-white/70 mt-1">Profile</span>
-              </button>
+              </Link>
             </div>
           </motion.div>
         </div>
