@@ -6,8 +6,11 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import Link from "next/link"
 import Image from "next/image"
 import { motion } from "framer-motion"
-import { LogOut, Settings, ChevronLeft } from "lucide-react"
+import { LogOut, Settings, ChevronLeft, Plus } from "lucide-react"
 import Header from "@/components/feed/header"
+import { getUserListings } from "@/lib/database"
+import { Listing } from "@/lib/types"
+import ListingGrid from "@/components/listings/listing-grid"
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -20,6 +23,8 @@ export default function ProfilePage() {
     profilePic: "",
     biography: ""
   })
+  const [userListings, setUserListings] = useState<Listing[]>([])
+  const [listingsLoading, setListingsLoading] = useState(true)
 
   const loadUserProfile = async () => {
     try {
@@ -103,6 +108,31 @@ export default function ProfilePage() {
     }
   }
 
+  // Load user listings
+  const loadUserListings = async (userId: string) => {
+    if (!userId) {
+      console.error("Cannot load listings: No user ID provided");
+      setListingsLoading(false);
+      return;
+    }
+    
+    try {
+      console.log("Loading listings for user ID:", userId);
+      const listings = await getUserListings(userId);
+      setUserListings(listings); // Now properly typed
+      console.log(`Loaded ${listings.length} listings successfully`);
+    } catch (error) {
+      console.error("Error loading user listings:", error);
+      // Check for specific Supabase error properties
+      if (error && typeof error === 'object' && 'code' in error) {
+        console.error("Supabase error code:", (error as any).code);
+        console.error("Supabase error details:", (error as any).details);
+      }
+    } finally {
+      setListingsLoading(false);
+    }
+  }
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -149,6 +179,13 @@ export default function ProfilePage() {
       subscription.unsubscribe()
     }
   }, [router, supabase])
+
+  // Load user listings when user is loaded
+  useEffect(() => {
+    if (user?.id) {
+      loadUserListings(user.id)
+    }
+  }, [user])
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -280,26 +317,54 @@ export default function ProfilePage() {
             </div>
           </div>
           
-          {/* Closet section */}
-          <div className="bg-gray-900/50 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden shadow-xl p-6">
-            <h2 className="text-xl font-bold mb-6">Your Closet</h2>
-            
-            {/* Placeholder for user's wardrobe */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {/* This would come from the database in a real app */}
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="aspect-square rounded-xl bg-gray-800/60 flex items-center justify-center animate-pulse">
-                  <span className="text-white/30">Item {i+1}</span>
-                </div>
-              ))}
+          {/* Your Closet Section */}
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">Your Closet</h2>
+              <Link 
+                href="/listings/create" 
+                className="bg-[#FF5CB1] hover:bg-[#ff3d9f] text-white px-5 py-2 rounded-full text-sm font-medium transition-colors flex items-center"
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Add Item
+              </Link>
             </div>
             
-            <div className="mt-8 text-center">
-              <Link
-                href="/closet"
-                className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-pink-600 to-purple-600 rounded-full hover:from-pink-700 hover:to-purple-700 transition-colors"
+            {listingsLoading ? (
+              <div className="min-h-[200px] flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-12 h-12 border-4 border-t-[#ff65c5] border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-white/70">Loading your closet...</p>
+                </div>
+              </div>
+            ) : userListings.length > 0 ? (
+              <ListingGrid initialListings={userListings} showFilters={false} />
+            ) : (
+              <div className="bg-gray-900/50 backdrop-blur-md rounded-xl border border-white/10 p-8 text-center">
+                <h3 className="text-xl font-medium mb-3">Your closet is empty</h3>
+                <p className="text-gray-400 mb-6">Start sharing your style by adding items to your closet</p>
+                <Link 
+                  href="/listings/create" 
+                  className="inline-flex items-center px-6 py-3 bg-[#FF5CB1] hover:bg-[#ff3d9f] text-white font-medium rounded-lg transition-colors"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Create Your First Listing
+                </Link>
+              </div>
+            )}
+          </div>
+          
+          {/* Saved Items Section */}
+          <div>
+            <h2 className="text-2xl font-bold mb-6">Saved Items</h2>
+            <div className="bg-gray-900/50 backdrop-blur-md rounded-xl border border-white/10 p-8 text-center">
+              <h3 className="text-xl font-medium mb-3">No saved items yet</h3>
+              <p className="text-gray-400 mb-6">Items you save will appear here</p>
+              <Link 
+                href="/feed" 
+                className="inline-flex items-center px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors"
               >
-                View Full Closet
+                Browse Listings
               </Link>
             </div>
           </div>
