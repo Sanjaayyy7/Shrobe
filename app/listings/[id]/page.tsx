@@ -331,7 +331,9 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                   </div>
                 </div>
                 {!isOwner && (
-                  <button className="ml-auto bg-[#FF5CB1] hover:bg-[#ff3d9f] text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
+                  <button 
+                    onClick={() => router.push(`/messages/${listing.user?.id}`)}
+                    className="ml-auto bg-[#FF5CB1] hover:bg-[#ff3d9f] text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
                     Message
                   </button>
                 )}

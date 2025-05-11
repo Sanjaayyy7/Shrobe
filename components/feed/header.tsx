@@ -208,6 +208,7 @@ export default function Header() {
               className="w-9 h-9 flex items-center justify-center text-white/70 hover:text-white rounded-full hover:bg-white/10 transition-colors"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
+              onClick={() => router.push('/search')}
             >
               <Search className="w-5 h-5" />
             </motion.button>
@@ -235,6 +236,7 @@ export default function Header() {
               className="w-9 h-9 flex items-center justify-center text-white/70 hover:text-white rounded-full hover:bg-white/10 transition-colors relative"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
+              onClick={() => router.push('/messages')}
             >
               <MessageSquare className="w-5 h-5" />
             </motion.button>
