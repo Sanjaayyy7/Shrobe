@@ -4,8 +4,6 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import Link from "next/link"
-import Image from "next/image"
-import { motion } from "framer-motion"
 import { LogOut, Settings, ChevronLeft, Plus } from "lucide-react"
 import Header from "@/components/feed/header"
 import { getUserListings } from "@/lib/database"
@@ -13,209 +11,35 @@ import { Listing } from "@/lib/types"
 import ListingGrid from "@/components/listings/listing-grid"
 import ListingCard from "@/components/listings/listing-card"
 import DeleteSelectedListingsButton from "@/components/delete-selected-listings-button"
+import { useUser } from "../context/userContext"
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error("Supabase URL or ANON key is missing. Check your env variables.")
+}
+
+const supabase = createClientComponentClient({
+  supabaseUrl,
+  supabaseKey: supabaseAnonKey
+})
 
 export default function ProfilePage() {
   const router = useRouter()
-  const supabase = createClientComponentClient()
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
-  const [userProfile, setUserProfile] = useState({
-    fullName: "",
-    username: "",
-    profilePic: "",
-    biography: ""
-  })
+  const { profile, setProfile } = useUser()
   const [userListings, setUserListings] = useState<Listing[]>([])
   const [listingsLoading, setListingsLoading] = useState(true)
   const [selectedListings, setSelectedListings] = useState<string[]>([])
-
-  const loadUserProfile = async () => {
-    try {
-      const { data, error } = await supabase.auth.getSession()
-      
-      if (error) {
-        console.error("Error checking profile auth:", error)
-        router.push("/login")
-        return
-      }
-      
-      if (!data?.session?.user) {
-        router.push("/login")
-        return
-      }
-      
-      // Set user data
-      setUser(data.session.user)
-      
-      console.log("Profile page - user metadata:", data.session.user.user_metadata)
-      
-      // Verificar si hay datos en localStorage primero
-      const localProfile = localStorage.getItem('userProfile')
-      if (localProfile) {
-        try {
-          const parsedProfile = JSON.parse(localProfile)
-          setUserProfile({
-            fullName: parsedProfile.fullName || data.session.user.user_metadata?.full_name || "User",
-            username: parsedProfile.username || data.session.user.user_metadata?.user_name || data.session.user.email?.split('@')[0] || "username",
-            profilePic: data.session.user.user_metadata?.avatar_url || "",
-            biography: parsedProfile.biography || ""
-          })
-        } catch (e) {
-          console.error("Error parsing profile from localStorage", e)
-        }
-      }
-      
-      // Intentar obtener datos de la tabla User
-      try {
-        const { data: userData, error: userError } = await supabase
-          .from('user')
-          .select('*')
-          .eq('id', data.session.user.id)
-          .single()
-          
-        if (!userError && userData) {
-          console.log("User data from database:", userData)
-          
-          // Actualizar el perfil con datos de la base de datos
-          setUserProfile(prevProfile => ({
-            ...prevProfile,
-            fullName: userData.full_name || prevProfile.fullName,
-            username: userData.user_name || prevProfile.username
-          }))
-          
-          // Actualizar localStorage con estos datos más recientes
-          const updatedProfile = {
-            fullName: userData.full_name || userProfile.fullName || data.session.user.user_metadata?.full_name || "User",
-            username: userData.user_name || userProfile.username || data.session.user.user_metadata?.user_name || data.session.user.email?.split('@')[0] || "username",
-            email: userData.mail || data.session.user.email || "",
-            biography: userData.biography || ""
-          }
-          localStorage.setItem('userProfile', JSON.stringify(updatedProfile))
-          
-          return
-        }
-      } catch (dbError) {
-        console.error("Error fetching user data from User table:", dbError)
-      }
-      
-      // Si no hay datos en la base de datos o hubo error, usar los metadatos de auth
-      setUserProfile({
-        fullName: data.session.user.user_metadata?.full_name || "User",
-        username: data.session.user.user_metadata?.user_name || data.session.user.email?.split('@')[0] || "username",
-        profilePic: data.session.user.user_metadata?.avatar_url || "",
-        biography: ""
-      })
-    } catch (error) {
-      console.error("Profile page error:", error)
-      router.push("/login")
-    }
-  }
-
-  // Load user listings
-  const loadUserListings = async (userId: string) => {
-    if (!userId) {
-      console.error("Cannot load listings: No user ID provided");
-      setListingsLoading(false);
-      return;
-    }
-    
-    try {
-      console.log("Loading listings for user ID:", userId);
-      const listings = await getUserListings(userId);
-      setUserListings(listings); // Now properly typed
-      console.log(`Loaded ${listings.length} listings successfully`);
-    } catch (error) {
-      console.error("Error loading user listings:", error);
-      // Check for specific Supabase error properties
-      if (error && typeof error === 'object' && 'code' in error) {
-        console.error("Supabase error code:", (error as any).code);
-        console.error("Supabase error details:", (error as any).details);
-      }
-    } finally {
-      setListingsLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        setLoading(true)
-        await loadUserProfile()
-      } catch (error) {
-        console.error("Profile page error:", error)
-        router.push("/login")
-      } finally {
-        setLoading(false)
-      }
-    }
-    
-    checkAuth()
-    
-    // Escuchar cambios en el perfil
-    const handleProfileUpdate = (event: any) => {
-      if (event.detail) {
-        setUserProfile(prev => ({
-          ...prev,
-          fullName: event.detail.fullName || prev.fullName,
-          username: event.detail.username || prev.username
-        }))
-      }
-    }
-    
-    window.addEventListener('userProfileUpdated', handleProfileUpdate as EventListener)
-    
-    // También escuchar cambios en las sesiones de Supabase
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'USER_UPDATED' && session) {
-        // Actualizar el perfil cuando los metadatos del usuario cambien
-        setUser(session.user)
-        setUserProfile(prev => ({
-          ...prev,
-          fullName: session.user.user_metadata?.full_name || prev.fullName,
-          username: session.user.user_metadata?.user_name || prev.username
-        }))
-      }
-    })
-    
-    return () => {
-      window.removeEventListener('userProfileUpdated', handleProfileUpdate as EventListener)
-      subscription.unsubscribe()
-    }
-  }, [router, supabase])
-
-  // Load user listings when user is loaded
-  useEffect(() => {
-    if (user?.id) {
-      loadUserListings(user.id)
-    }
-  }, [user])
-
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        loadUserProfile()
-      }
-    }
-  
-    document.addEventListener("visibilitychange", handleVisibilityChange)
-  
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange)
-    }
-  }, [])
-
-  const handleSignOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut()
-      if (error) {
-        console.error("Error signing out:", error)
-      } else {
-        router.push("/")
-      }
-    } catch (err) {
-      console.error("Exception during sign out:", err)
-    }
-  }
+  const [userProfile, setUserProfile] = useState({
+    fullName: '',
+    username: '',
+    profilePic: '',
+    biography: '',
+    age: '',
+  })
 
   // Handle toggling selection of listings
   const handleSelectListing = (id: string, selected: boolean) => {
@@ -234,13 +58,92 @@ export default function ProfilePage() {
     setSelectedListings([]);
   };
 
+  const loadUserProfile = async () => {
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) {
+        alert("Could not get authenticated user")
+        return
+      }
+
+      setUser(user)
+
+      // Cargar desde localStorage si existe
+      const localProfile = localStorage.getItem("userProfile")
+      if (localProfile) {
+        try {
+          const parsed = JSON.parse(localProfile)
+          setUserProfile({
+            fullName: parsed.fullName || user.user_metadata?.full_name || "User",
+            username: parsed.username || user.user_metadata?.user_name || user.email?.split('@')[0] || "username",
+            profilePic: user.user_metadata?.avatar_url || "",
+            biography: parsed.biography || "",
+            age: parsed.age || ""
+          })
+        } catch (e) {
+          console.error("Error parsing localStorage", e)
+        }
+      }
+
+      // Cargar desde Supabase (tabla user)
+      const { data: userData, error } = await supabase
+        .from("user")
+        .select("*")
+        .eq("id", user.id)
+        .single()
+
+      if (!error && userData) {
+        setUserProfile(prev => ({
+          ...prev,
+          fullName: userData.full_name || prev.fullName,
+          username: userData.user_name || prev.username,
+          biography: userData.biography || prev.biography,
+          age: userData.age?.toString() || prev.age
+        }))
+        localStorage.setItem("userProfile", JSON.stringify({
+          fullName: userData.full_name,
+          username: userData.user_name,
+          email: userData.mail,
+          biography: userData.biography,
+          age: userData.age?.toString()
+        }))
+      }
+    } catch (err) {
+      console.error("Error loading user profile:", err)
+      router.push("/login")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadUserListings = async (userId: string) => {
+    try {
+      const listings = await getUserListings(userId)
+      setUserListings(listings)
+    } catch (err) {
+      console.error("Error loading listings:", err)
+    } finally {
+      setListingsLoading(false)
+    }
+  }
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push("/")
+  }
+
+  useEffect(() => {
+    loadUserProfile()
+  }, [])
+
+  useEffect(() => {
+    if (user?.id) loadUserListings(user.id)
+  }, [user])
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-t-[#ff65c5] border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-lg font-medium">Loading profile...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center text-white">
+        <p>Loading profile...</p>
       </div>
     )
   }
@@ -289,6 +192,9 @@ export default function ProfilePage() {
                       {userProfile.fullName}
                     </h1>
                     <p className="text-gray-400">@{userProfile.username}</p>
+                    {userProfile.age && (
+                      <p className="text-gray-400">Age: {userProfile.age}</p>
+                    )}
                   </div>
                   
                   <div className="mt-4 md:mt-0 flex space-x-3">
@@ -420,4 +326,4 @@ export default function ProfilePage() {
       </div>
     </main>
   )
-} 
+}

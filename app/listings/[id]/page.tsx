@@ -778,6 +778,26 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
     (a, b) => a.display_order - b.display_order
   )
   
+  // Get current image
+  const currentImage = sortedImages[currentImageIndex]
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Take a look at this',
+          text: 'Take a look at this listing!',
+          url: window.location.href,
+        });
+        console.log('Shared successfully');
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    } else {
+      alert('The share function is not available in this browser');
+    }
+  };
+  
   return (
     <main className="min-h-screen bg-black text-white pb-16">
       {/* Back button */}
@@ -831,6 +851,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                   <button
                     className="p-2 rounded-full bg-gray-800 text-white/70 hover:text-white hover:bg-gray-700"
                     aria-label="Share listing"
+                    onClick={handleShare}
                   >
                     <Share className="w-5 h-5" />
                   </button>
