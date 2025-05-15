@@ -6,6 +6,34 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import Link from "next/link"
 import { ChevronLeft, Save } from "lucide-react"
 import Header from "@/components/feed/header"
+import { supabase } from "@/lib/supabase"
+
+
+function calculateAge(dateString: string): number {
+  const today = new Date()
+  const birthDate = new Date(dateString)
+  let age = today.getFullYear() - birthDate.getFullYear()
+  const m = today.getMonth() - birthDate.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--
+  }
+  return age
+}
+
+function verifyUsername(username: string): boolean {
+  return /^[a-zA-Z0-9_]+$/.test(username)
+}
+
+async function usernameExists(username: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('profile')
+    .select('user_name')
+    .eq('user_name', username)
+    .maybeSingle()
+
+  return !!data
+}
+
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -17,15 +45,21 @@ export default function SettingsPage() {
     fullName: "",
     username: "",
     email: "",
-    biography: ""
+    biography: "",
+    age: "",
+    dateOfBirth: ""
   })
   const [originalUsername, setOriginalUsername] = useState("")
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [saveError, setSaveError] = useState("")
   const [usernameError, setUsernameError] = useState("")
   const [checkingUsername, setCheckingUsername] = useState(false)
+  const [dateOfBirth, setDateOfBirth] = useState("")
+  const [username, setUsername] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+
     const fetchUserProfile = async () => {
       const {
         data: { user },
@@ -57,6 +91,8 @@ export default function SettingsPage() {
         username: profileData.user_name || "",
         email: profileData.mail || user.email || "",
         biography: profileData.biography || "",
+        age: profileData.age || "",
+        dateOfBirth: profileData.date_of_birth || "",
       })
       setLoading(false)
     }
@@ -76,10 +112,33 @@ export default function SettingsPage() {
     setSaving(true)
     setSaveError("")
     setSaveSuccess(false)
+    setError(null)
+    
 
     if (!user) {
       setSaveError("No user authenticated.")
       setSaving(false)
+      return
+    }
+
+    const age = calculateAge(dateOfBirth)
+
+    if (age < 10 || age > 100) {
+      setSaveError("Age must be between 10 and 100 years")
+      setSaving(false)
+      return
+    }
+
+    if (!verifyUsername(username)) {
+      setError("Username must contain only letters and numbers")
+      setLoading(false)
+      return
+    }
+
+    const exists = await usernameExists(username)
+    if (exists) {
+      setError("This username is already taken")
+      setLoading(false)
       return
     }
 
@@ -89,6 +148,7 @@ export default function SettingsPage() {
         full_name: formData.fullName,
         user_name: formData.username,
         biography: formData.biography,
+        age: age,
       })
       .eq("id", user.id)
 
@@ -178,6 +238,14 @@ export default function SettingsPage() {
                   className="w-full px-4 py-2.5 bg-black/60 border border-white/10 rounded-lg text-gray-400 cursor-not-allowed"
                 />
               </div>
+
+              <input
+                type="date"
+                placeholder="Date of Birth"
+                value={dateOfBirth}
+                onChange={(e) => setDateOfBirth(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg bg-black/40 border border-white/20 text-white placeholder-gray-400"
+              />
 
               <div>
                 <label htmlFor="biography" className="block text-sm font-medium text-gray-300 mb-1">Biography</label>

@@ -5,10 +5,13 @@ import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import Link from "next/link"
 import { LogOut, Settings, ChevronLeft, Plus } from "lucide-react"
+import { motion } from "framer-motion"
 import Header from "@/components/feed/header"
 import { getUserListings } from "@/lib/database"
 import { Listing } from "@/lib/types"
 import ListingGrid from "@/components/listings/listing-grid"
+import ListingCard from "@/components/listings/listing-card"
+import DeleteSelectedListingsButton from "@/components/delete-selected-listings-button"
 import { useUser } from "../context/userContext"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -30,12 +33,31 @@ export default function ProfilePage() {
   const { profile, setProfile } = useUser()
   const [userListings, setUserListings] = useState<Listing[]>([])
   const [listingsLoading, setListingsLoading] = useState(true)
+  const [selectedListings, setSelectedListings] = useState<string[]>([])
   const [userProfile, setUserProfile] = useState({
     fullName: '',
     username: '',
     profilePic: '',
-    biography: ''
+    biography: '',
+    age: '',
   })
+
+  // Handle toggling selection of listings
+  const handleSelectListing = (id: string, selected: boolean) => {
+    if (selected) {
+      setSelectedListings(prev => [...prev, id]);
+    } else {
+      setSelectedListings(prev => prev.filter(listingId => listingId !== id));
+    }
+  };
+
+  // Handle successful deletion
+  const handleDeleteSuccess = () => {
+    // Refresh listings
+    setUserListings(prev => prev.filter(listing => !selectedListings.includes(listing.id)));
+    // Clear selection
+    setSelectedListings([]);
+  };
 
   const loadUserProfile = async () => {
     try {
@@ -56,7 +78,8 @@ export default function ProfilePage() {
             fullName: parsed.fullName || user.user_metadata?.full_name || "User",
             username: parsed.username || user.user_metadata?.user_name || user.email?.split('@')[0] || "username",
             profilePic: user.user_metadata?.avatar_url || "",
-            biography: parsed.biography || ""
+            biography: parsed.biography || "",
+            age: parsed.age || ""
           })
         } catch (e) {
           console.error("Error parsing localStorage", e)
@@ -75,13 +98,15 @@ export default function ProfilePage() {
           ...prev,
           fullName: userData.full_name || prev.fullName,
           username: userData.user_name || prev.username,
-          biography: userData.biography || prev.biography
+          biography: userData.biography || prev.biography,
+          age: userData.age?.toString() || prev.age
         }))
         localStorage.setItem("userProfile", JSON.stringify({
           fullName: userData.full_name,
           username: userData.user_name,
           email: userData.mail,
-          biography: userData.biography
+          biography: userData.biography,
+          age: userData.age?.toString()
         }))
       }
     } catch (err) {
@@ -168,6 +193,9 @@ export default function ProfilePage() {
                       {userProfile.fullName}
                     </h1>
                     <p className="text-gray-400">@{userProfile.username}</p>
+                    {userProfile.age && (
+                      <p className="text-gray-400">Age: {userProfile.age}</p>
+                    )}
                   </div>
                   
                   <div className="mt-4 md:mt-0 flex space-x-3">
@@ -220,13 +248,20 @@ export default function ProfilePage() {
           <div className="mb-8">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">Your Closet</h2>
-              <Link 
-                href="/listings/create" 
-                className="bg-[#FF5CB1] hover:bg-[#ff3d9f] text-white px-5 py-2 rounded-full text-sm font-medium transition-colors flex items-center"
-              >
-                <Plus className="w-4 h-4 mr-1.5" />
-                Add Item
-              </Link>
+              <div className="flex gap-2">
+                <DeleteSelectedListingsButton
+                  userId={user?.id}
+                  selectedListings={selectedListings}
+                  onSuccess={handleDeleteSuccess}
+                />
+                <Link 
+                  href="/listings/create" 
+                  className="bg-[#FF5CB1] hover:bg-[#ff3d9f] text-white px-5 py-2 rounded-full text-sm font-medium transition-colors flex items-center"
+                >
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Add Item
+                </Link>
+              </div>
             </div>
             
             {listingsLoading ? (
@@ -237,7 +272,28 @@ export default function ProfilePage() {
                 </div>
               </div>
             ) : userListings.length > 0 ? (
-              <ListingGrid initialListings={userListings} showFilters={false} />
+              <div>
+                {/* Create a custom listing grid with selectable items */}
+                <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {userListings.map((listing) => (
+                    <motion.div
+                      key={listing.id}
+                      layout
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4 }}
+                    >
+                      {/* Use the ListingCard component with selectable prop */}
+                      <ListingCard
+                        listing={listing}
+                        selectable={true}
+                        isSelected={selectedListings.includes(listing.id)}
+                        onSelect={handleSelectListing}
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
             ) : (
               <div className="bg-gray-900/50 backdrop-blur-md rounded-xl border border-white/10 p-8 text-center">
                 <h3 className="text-xl font-medium mb-3">Your closet is empty</h3>

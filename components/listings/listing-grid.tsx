@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Filter, Grid, Layers } from "lucide-react"
+import { Filter, Grid, Layers, MapPin } from "lucide-react"
 import ListingCard from "./listing-card"
+import MapView from "./map-view"
 import { Listing } from "@/lib/types"
 import { getListings } from "@/lib/database"
 
@@ -36,7 +37,7 @@ export default function ListingGrid({
   const [listings, setListings] = useState<Listing[]>(initialListings || [])
   const [isLoading, setIsLoading] = useState(!initialListings)
   const [activeFilter, setActiveFilter] = useState("All Styles")
-  const [viewMode, setViewMode] = useState<"grid" | "masonry">("masonry")
+  const [viewMode, setViewMode] = useState<"grid" | "masonry" | "map">("masonry")
   const [likedItems, setLikedItems] = useState<string[]>([])
   const [savedItems, setSavedItems] = useState<string[]>([])
   
@@ -44,6 +45,10 @@ export default function ListingGrid({
   useEffect(() => {
     if (!initialListings) {
       fetchListings()
+    } else {
+      // Log the structure of initialListings for debugging
+      console.log("Initial listings provided:", initialListings.length);
+      console.log("First listing images sample:", initialListings[0]?.images);
     }
   }, [initialListings])
   
@@ -56,6 +61,8 @@ export default function ListingGrid({
         : undefined
         
       const data = await getListings(filters)
+      console.log("Fetched listings:", data.length);
+      console.log("First listing images sample:", data[0]?.images);
       setListings(data)
     } catch (error) {
       console.error("Error fetching listings:", error)
@@ -69,8 +76,8 @@ export default function ListingGrid({
     fetchListings(category === "All Styles" ? undefined : category)
   }
   
-  const toggleViewMode = () => {
-    setViewMode(viewMode === "grid" ? "masonry" : "grid")
+  const toggleViewMode = (mode: "grid" | "masonry" | "map") => {
+    setViewMode(mode)
   }
   
   const handleDoubleTap = (id: string) => {
@@ -127,27 +134,46 @@ export default function ListingGrid({
               {listings.length} {listings.length === 1 ? 'item' : 'items'} found
             </p>
             
-            <button
-              onClick={toggleViewMode}
-              className="flex items-center gap-1 text-white/70 hover:text-white text-sm"
-            >
-              {viewMode === "grid" ? (
-                <>
-                  <Layers className="w-4 h-4" />
-                  <span>Masonry View</span>
-                </>
-              ) : (
-                <>
-                  <Grid className="w-4 h-4" />
-                  <span>Grid View</span>
-                </>
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => toggleViewMode("masonry")}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                  viewMode === "masonry" 
+                    ? "bg-[#FF5CB1] text-white" 
+                    : "bg-gray-800/50 text-white/70 hover:bg-gray-800"
+                }`}
+              >
+                <Layers className="w-4 h-4" />
+                <span>Masonry</span>
+              </button>
+              <button
+                onClick={() => toggleViewMode("grid")}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                  viewMode === "grid" 
+                    ? "bg-[#FF5CB1] text-white" 
+                    : "bg-gray-800/50 text-white/70 hover:bg-gray-800"
+                }`}
+              >
+                <Grid className="w-4 h-4" />
+                <span>Grid</span>
+              </button>
+              <button
+                onClick={() => toggleViewMode("map")}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm transition-colors ${
+                  viewMode === "map" 
+                    ? "bg-[#FF5CB1] text-white" 
+                    : "bg-gray-800/50 text-white/70 hover:bg-gray-800"
+                }`}
+              >
+                <MapPin className="w-4 h-4" />
+                <span>Map</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
       
-      {/* Listings grid */}
+      {/* Display based on view mode */}
       {listings.length === 0 ? (
         <div className="min-h-[200px] flex items-center justify-center bg-gray-900/50 rounded-xl border border-white/10">
           <div className="text-center p-8">
@@ -155,6 +181,8 @@ export default function ListingGrid({
             <p className="text-white/70">Try adjusting your filters or check back later</p>
           </div>
         </div>
+      ) : viewMode === "map" ? (
+        <MapView listings={listings} />
       ) : (
         <motion.div 
           className={`grid gap-6 ${
@@ -185,13 +213,8 @@ export default function ListingGrid({
   )
 }
 
-// Helper function to create a masonry-like layout with random heights
+// Helper function to generate random heights for masonry layout
 function getRandomHeight() {
-  const heights = [
-    "row-span-1", // default height
-    "row-span-1",
-    "row-span-1",
-    "row-span-2", // taller items
-  ]
-  return heights[Math.floor(Math.random() * heights.length)]
+  const heights = ["", "row-span-1", "row-span-2"];
+  return heights[Math.floor(Math.random() * heights.length)];
 } 

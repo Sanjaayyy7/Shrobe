@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -11,27 +11,106 @@ import { addToWishlist, removeFromWishlist } from "@/lib/database"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 interface ListingCardProps {
-  listing: Listing & { User?: { user_name: string; full_name?: string } }
+  listing: Listing & { User?: { user_name: string; full_name?: string }, user?: { user_name: string; full_name?: string } }
   onDoubleTap?: (id: string) => void
   isSaved?: boolean
   isLiked?: boolean
+  selectable?: boolean
+  isSelected?: boolean
+  onSelect?: (id: string, selected: boolean) => void
 }
 
 export default function ListingCard({ 
   listing, 
   onDoubleTap, 
   isSaved = false,
-  isLiked = false
+  isLiked = false,
+  selectable = false,
+  isSelected = false,
+  onSelect
 }: ListingCardProps) {
   const [liked, setLiked] = useState(isLiked)
   const [saved, setSaved] = useState(isSaved)
   const [tapCount, setTapCount] = useState(0)
   const [tapTimer, setTapTimer] = useState<NodeJS.Timeout | null>(null)
+  const [imageError, setImageError] = useState(false)
   const supabase = createClientComponentClient()
 
-  const mainImage = listing.images && listing.images.length > 0
-    ? listing.images.sort((a, b) => a.display_order - b.display_order)[0]
-    : null
+  // Enhanced console log for debugging images
+  useEffect(() => {
+    console.log(`Listing ${listing.id} title: ${listing.title}`);
+    if (listing.images) {
+      console.log(`Listing ${listing.id} images type:`, Array.isArray(listing.images) ? 'Array' : typeof listing.images);
+      console.log(`Listing ${listing.id} images length:`, Array.isArray(listing.images) ? listing.images.length : 'Not an array');
+      if (Array.isArray(listing.images) && listing.images.length > 0) {
+        console.log(`Listing ${listing.id} first image:`, listing.images[0]);
+      }
+    } else {
+      console.log(`Listing ${listing.id} has no images array`);
+    }
+  }, [listing.id, listing.title, listing.images]);
+
+  // Get the user information consistently across different API responses
+  const userInfo = listing.user || listing.User;
+
+  // Enhanced image handling logic with safe type checking
+  const getMainImage = () => {
+    // Ensure we have an images array
+    if (!listing || !listing.images) {
+      console.log(`Listing ${listing?.id || 'unknown'} - No images property`);
+      return null;
+    }
+    
+    // Convert to array if not already
+    const imagesArray = Array.isArray(listing.images) 
+      ? listing.images 
+      : (typeof listing.images === 'object' && listing.images !== null)
+        ? [listing.images] 
+        : [];
+    
+    if (imagesArray.length === 0) {
+      console.log(`Listing ${listing.id} - Images array is empty`);
+      return null;
+    }
+    
+    try {
+      // If the images have display_order property, sort by it
+      if (imagesArray.length > 0 && 'display_order' in imagesArray[0] && typeof imagesArray[0].display_order === 'number') {
+        console.log(`Listing ${listing.id} - Using display_order to sort images`);
+        const sortedImages = [...imagesArray].sort((a, b) => a.display_order - b.display_order);
+        return sortedImages[0];
+      }
+      
+      // Otherwise just return the first image
+      console.log(`Listing ${listing.id} - Using first image (no display_order)`);
+      return imagesArray[0];
+    } catch (error) {
+      console.error(`Error getting main image for listing ${listing.id}:`, error);
+      return null;
+    }
+  }
+
+  const mainImage = getMainImage();
+  
+  // Check if mainImage has valid URL
+  const hasValidImageUrl = mainImage && 
+                          typeof mainImage === 'object' && 
+                          mainImage !== null && 
+                          'image_url' in mainImage && 
+                          typeof mainImage.image_url === 'string';
+  
+  // Log the main image for debugging
+  useEffect(() => {
+    if (mainImage) {
+      console.log(`Listing ${listing.id} main image:`, mainImage);
+      console.log(`Listing ${listing.id} has valid image URL:`, hasValidImageUrl);
+      if (hasValidImageUrl) {
+        console.log(`Listing ${listing.id} image URL:`, mainImage.image_url);
+      }
+    } else {
+      console.log(`Listing ${listing.id} has no main image`);
+    }
+  }, [listing.id, mainImage, hasValidImageUrl]);
 
   const handleTap = () => {
     if (tapCount === 0) {
@@ -81,6 +160,28 @@ export default function ListingCard({
     }
   }
 
+  const handleSelect = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onSelect) {
+      onSelect(listing.id, !isSelected);
+    }
+  };
+
+  // Format price display based on listing type
+  const getPriceDisplay = () => {
+    if (!listing.listing_type || listing.listing_type === 'Rent') {
+      return `$${listing.daily_price}/day`;
+    } else if (listing.listing_type === 'Buy') {
+      return `$${listing.daily_price}`;
+    } else if (listing.listing_type === 'Sell') {
+      return 'For Sale';
+    } else if (listing.listing_type === 'Trade') {
+      return 'For Trade';
+    }
+    return `$${listing.daily_price}/day`; // Default fallback
+  };
+
   return (
     <Link href={`/listings/${listing.id}`}>
       <motion.div 
@@ -90,22 +191,42 @@ export default function ListingCard({
         transition={{ duration: 0.4 }}
         whileHover={{ y: -4 }}
       >
+        {/* Checkbox for selectable items */}
+        {selectable && (
+          <div 
+            onClick={handleSelect}
+            className="absolute top-3 left-3 z-10"
+          >
+            <div className={`w-5 h-5 rounded border ${isSelected ? 'bg-[#FF5CB1] border-[#FF5CB1]' : 'border-white/50 bg-black/50'} flex items-center justify-center transition-colors cursor-pointer`}>
+              {isSelected && (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Image */}
         <div 
           className="aspect-[3/4] relative overflow-hidden"
           onClick={handleTap}
         >
-          {mainImage ? (
+          {hasValidImageUrl && !imageError ? (
             <Image
               src={mainImage.image_url}
               alt={listing.title}
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-105"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              onError={() => {
+                console.error(`Image failed to load: ${mainImage.image_url}`);
+                setImageError(true);
+              }}
             />
           ) : (
             <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-              <span className="text-gray-500">No image</span>
+              <span className="text-gray-500">No image available</span>
             </div>
           )}
           
@@ -123,7 +244,7 @@ export default function ListingCard({
           
           {/* Price tag */}
           <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm px-3 py-1 rounded-full">
-            <p className="text-white font-medium text-sm">${listing.daily_price}/day</p>
+            <p className="text-white font-medium text-sm">{getPriceDisplay()}</p>
           </div>
           
           {/* Availability badge */}
@@ -155,11 +276,11 @@ export default function ListingCard({
             <Avatar className="w-6 h-6">
               <AvatarImage src="" />
               <AvatarFallback className="bg-gray-700 text-white text-xs">
-                {listing.User?.full_name?.charAt(0) || listing.User?.user_name?.charAt(0) || 'U'}
+                {userInfo?.full_name?.charAt(0) || userInfo?.user_name?.charAt(0) || 'U'}
               </AvatarFallback>
             </Avatar>
             <span className="text-sm text-gray-300">
-              {listing.User?.full_name || listing.User?.user_name || 'Unknown User'}
+              {userInfo?.full_name || userInfo?.user_name || 'Unknown User'}
             </span>
           </div>
           

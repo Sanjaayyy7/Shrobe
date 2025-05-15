@@ -17,11 +17,14 @@ import {
   Check
 } from "lucide-react"
 import Image from "next/image"
+import FixStorageButton from "@/components/fix-storage-button"
+import LocationPicker from "./location-picker"
 
 import { 
   Listing, 
   ListingCondition, 
-  ClothingCategory 
+  ClothingCategory,
+  ListingType
 } from "@/lib/types"
 import { 
   createListing, 
@@ -57,6 +60,13 @@ const categories: ClothingCategory[] = [
   "Sustainable"
 ]
 
+const listingTypes: ListingType[] = [
+  "Rent",
+  "Buy",
+  "Sell",
+  "Trade"
+]
+
 interface ListingFormProps {
   initialData?: Listing
   mode: "create" | "edit"
@@ -77,7 +87,8 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
       daily_price: 0,
       weekly_price: 0,
       location: "",
-      is_available: true
+      is_available: true,
+      listing_type: "Rent" // Default to Rent
     }
   )
   
@@ -120,21 +131,31 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
     }
   }, [initialData])
   
-  // Handle input changes
+  // Update form field
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     
     if (name === "daily_price" || name === "weekly_price") {
-      setFormData({
-        ...formData,
+      setFormData(prev => ({
+        ...prev,
         [name]: parseFloat(value) || 0
-      })
+      }))
     } else {
-      setFormData({
-        ...formData,
+      setFormData(prev => ({
+        ...prev,
         [name]: value
-      })
+      }))
     }
+  }
+  
+  // Update location data from picker
+  const handleLocationChange = (location: string, lat: number, lng: number) => {
+    setFormData(prev => ({
+      ...prev,
+      location: location,
+      latitude: lat,
+      longitude: lng
+    }))
   }
   
   // Handle image selection
@@ -235,7 +256,8 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
           weekly_price: formData.weekly_price,
           location: formData.location,
           latitude: formData.latitude,
-          longitude: formData.longitude
+          longitude: formData.longitude,
+          listing_type: formData.listing_type as ListingType
         };
         
         console.log("Creating listing with:", listingData);
@@ -249,69 +271,123 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
       } else {
         // Update existing listing
         if (!initialData?.id) {
-          throw new Error("Listing ID is required for updates")
+          throw new Error("Cannot update listing without ID")
         }
         
-        listing = await updateListing(initialData.id, formData)
+        // Only update fields that have changed
+        const updates: Partial<Listing> = {}
+        
+        if (formData.title !== initialData.title) updates.title = formData.title || ""
+        if (formData.description !== initialData.description) updates.description = formData.description || ""
+        if (formData.brand !== initialData.brand) updates.brand = formData.brand
+        if (formData.size !== initialData.size) updates.size = formData.size
+        if (formData.condition !== initialData.condition) updates.condition = formData.condition as ListingCondition | undefined
+        if (formData.daily_price !== initialData.daily_price) updates.daily_price = formData.daily_price || 0
+        if (formData.weekly_price !== initialData.weekly_price) updates.weekly_price = formData.weekly_price
+        if (formData.location !== initialData.location) updates.location = formData.location
+        if (formData.is_available !== initialData.is_available) updates.is_available = formData.is_available || false
+        if (formData.listing_type !== initialData.listing_type) updates.listing_type = formData.listing_type as ListingType
+        
+        // If no fields have changed, but we have new images, we still want to call update
+        if (Object.keys(updates).length === 0 && images.length === 0) {
+          setSuccess(true)
+          // Add a slight delay before redirecting to show success message
+          setTimeout(() => {
+            router.push(`/listings/${initialData.id}`)
+          }, 1500)
+          return
+        }
+        
+        console.log("Updating listing with:", updates);
+        listing = await updateListing(initialData.id, updates)
         
         // Delete existing tags to replace them
         await deleteListingTags(listing.id)
       }
       
-      // Upload images if there are new ones
-      if (images.length > 0) {
-        try {
-          // Ensure the storage bucket exists
-          await ensureStorageBucket('listings');
-          
-          const uploadPromises = images.map(async (file, index) => {
-            try {
-              const imageUrl = await uploadImage(file, `listings/${listing.id}`);
-              return {
-                listing_id: listing.id,
-                image_url: imageUrl,
-                display_order: index
-              };
-            } catch (uploadError) {
-              console.error(`Error uploading image ${index}:`, uploadError);
-              throw new Error(`Failed to upload image ${index + 1}: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`);
-            }
-          });
-          
-          const uploadedImages = await Promise.all(uploadPromises);
-          await addListingImages(uploadedImages);
-        } catch (imageError) {
-          console.error("Error processing images:", imageError);
-          throw new Error(`Image upload failed: ${imageError instanceof Error ? imageError.message : 'Unknown error'}`);
-        }
-      }
-      
       // Add tags
       if (selectedTags.length > 0) {
-        const tagObjects = selectedTags.map(tag => ({
+        const tagsToAdd = selectedTags.map(tag => ({
           listing_id: listing.id,
           tag
         }))
         
-        await addListingTags(tagObjects)
+        await addListingTags(tagsToAdd)
       }
       
-      // Add availability if both dates are set
-      if (dateRange.start && dateRange.end) {
-        await addListingAvailability([{
-          listing_id: listing.id,
-          start_date: dateRange.start.toISOString().split('T')[0],
-          end_date: dateRange.end.toISOString().split('T')[0],
-          is_available: true
-        }])
+      // Handle images - only upload new images (not existing URLs)
+      // First, determine which images are newly added by user vs. existing images from server
+      let newImageSuccess = true;
+      let imageSaveError = null;
+      
+      try {
+        if (images.length > 0) {
+          // First, try to fix storage policies
+          try {
+            await supabase.rpc('fix_storage_policies');
+          } catch (rpcError) {
+            console.log('RPC not available, continuing anyway', rpcError);
+          }
+          
+          const uploadPromises = images.map(async (file) => {
+            try {
+              const imageUrl = await uploadImage(file, `listings/${listing.id}`);
+              return { success: true, url: imageUrl };
+            } catch (uploadError) {
+              console.error("Failed to upload image:", uploadError);
+              
+              // Check specifically for RLS policy errors
+              if (uploadError instanceof Error && 
+                  (uploadError.message.includes('row-level security policy') || 
+                   uploadError.message.includes('permission denied'))) {
+                throw new Error('Storage permissions error: row-level security policy violation. Please try using the "Fix Storage Permissions" button before uploading images.');
+              }
+              
+              return { success: false, error: uploadError };
+            }
+          });
+          
+          const results = await Promise.all(uploadPromises);
+          
+          // Check if all uploads were successful
+          const failedUploads = results.filter(result => !result.success);
+          if (failedUploads.length > 0) {
+            newImageSuccess = false;
+            const firstError = failedUploads[0].error;
+            imageSaveError = firstError instanceof Error ? firstError.message : 'Failed to upload one or more images';
+          }
+          
+          // Add the successful image uploads to the database
+          const successfulUrls = results
+            .filter(result => result.success)
+            .map(result => (result as { url: string }).url);
+          
+          if (successfulUrls.length > 0) {
+            const imagesToAdd = successfulUrls.map((url, index) => ({
+              listing_id: listing.id,
+              image_url: url,
+              display_order: index
+            }));
+            
+            await addListingImages(imagesToAdd);
+          }
+        }
+      } catch (imageError) {
+        newImageSuccess = false;
+        imageSaveError = imageError instanceof Error ? imageError.message : 'Unknown error uploading images';
       }
       
-      setSuccess(true)
-      
-      // Redirect after a short delay
+      // Show success and redirect, but include warning about images if needed
+      setSuccess(true);
       setTimeout(() => {
-        router.push(`/listings/${listing.id}`)
-      }, 1500)
+        if (newImageSuccess) {
+          router.push(`/listings/${listing.id}`);
+        } else {
+          // If there was an image upload error, stay on the page and show the error
+          setSuccess(false);
+          setError(imageSaveError || 'Error uploading images. Your listing was saved, but images failed to upload.');
+        }
+      }, 1500);
       
     } catch (error) {
       console.error("Error submitting listing:", error)
@@ -360,6 +436,32 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
                   placeholder="Provide details about your item, including any special features or details borrowers should know"
                   required
                 />
+              </div>
+              
+              <div>
+                <label htmlFor="listing_type" className="block text-sm font-medium text-gray-300 mb-1">
+                  Listing Type <span className="text-[#FF5CB1]">*</span>
+                </label>
+                <select
+                  id="listing_type"
+                  name="listing_type"
+                  value={formData.listing_type || "Rent"}
+                  onChange={handleChange}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#FF5CB1] focus:border-transparent"
+                  required
+                >
+                  {listingTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {formData.listing_type === 'Rent' && 'Rent your item for daily use'}
+                  {formData.listing_type === 'Buy' && 'List your item for someone to buy'}
+                  {formData.listing_type === 'Sell' && 'Indicate your item is for sale'}
+                  {formData.listing_type === 'Trade' && 'Indicate your item is available for trade'}
+                </p>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -467,6 +569,11 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
                   </label>
                 )}
               </div>
+              
+              {/* Add the FixStorageButton to address RLS policy errors */}
+              {error && error.toLowerCase().includes('row-level security policy') && (
+                <FixStorageButton />
+              )}
             </div>
           </div>
         )
@@ -561,20 +668,12 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
               <label htmlFor="location" className="block text-sm font-medium text-gray-300 mb-1">
                 Location
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                  <MapPin className="w-4 h-4 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  id="location"
-                  name="location"
-                  value={formData.location || ""}
-                  onChange={handleChange}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#FF5CB1] focus:border-transparent"
-                  placeholder="e.g. Downtown, San Francisco"
-                />
-              </div>
+              <LocationPicker
+                initialLocation={formData.location}
+                initialLatitude={formData.latitude}
+                initialLongitude={formData.longitude}
+                onLocationChange={handleLocationChange}
+              />
               <p className="text-xs text-gray-500 mt-1">
                 This helps local borrowers find your item. Exact location will not be shared.
               </p>
@@ -651,6 +750,11 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
         {error && (
           <div className="bg-red-900/30 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg">
             <p>{error}</p>
+            {error.toLowerCase().includes('row-level security policy') && (
+              <div className="mt-3">
+                <FixStorageButton />
+              </div>
+            )}
           </div>
         )}
         
