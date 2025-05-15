@@ -170,6 +170,23 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
   
   // Get current image
   const currentImage = sortedImages[currentImageIndex]
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Take a look at this',
+          text: 'Take a look at this listing!',
+          url: window.location.href,
+        });
+        console.log('Shared successfully');
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    } else {
+      alert('The share function is not available in this browser');
+    }
+  };
   
   return (
     <main className="min-h-screen bg-black text-white pb-16">
@@ -286,6 +303,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                   <button
                     className="p-2 rounded-full bg-gray-800 text-white/70 hover:text-white hover:bg-gray-700"
                     aria-label="Share listing"
+                    onClick={handleShare}
                   >
                     <Share className="w-5 h-5" />
                   </button>
@@ -331,7 +349,9 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                   </div>
                 </div>
                 {!isOwner && (
-                  <button className="ml-auto bg-[#FF5CB1] hover:bg-[#ff3d9f] text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
+                  <button 
+                    onClick={() => router.push(`/messages/${listing.user?.id}`)}
+                    className="ml-auto bg-[#FF5CB1] hover:bg-[#ff3d9f] text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
                     Message
                   </button>
                 )}
