@@ -70,19 +70,41 @@ export async function getListings(filters?: {
 
   if (!data) return [];
 
-  // Log the structure of the data we received
+  // More detailed logging for debugging
   console.log(`Retrieved ${data.length} listings from database`);
   if (data.length > 0) {
-    console.log('First listing images:', data[0].listing_images);
+    console.log('First listing ID:', data[0].id);
+    console.log('First listing title:', data[0].title);
+    
+    // Check if images data is available and in what form
+    if (data[0].listing_images) {
+      console.log('First listing images count:', data[0].listing_images.length);
+      console.log('First listing first image sample:', 
+        data[0].listing_images.length > 0 ? 
+        JSON.stringify(data[0].listing_images[0]) : 'No images');
+    } else {
+      console.log('First listing has no listing_images property');
+    }
+    
     console.log('First listing tags:', data[0].listing_tags);
   }
 
   // Reformat listing_images to images for consistency
-  const reformattedData = data.map((listing: any) => ({
-    ...listing,
-    images: listing.listing_images || [],
-    tags: listing.listing_tags || [],
-  }));
+  const reformattedData = data.map((listing: any) => {
+    // Ensure listing_images is always an array
+    const images = Array.isArray(listing.listing_images) ? listing.listing_images : [];
+    
+    // Log any issues with images for debugging
+    if (!Array.isArray(listing.listing_images)) {
+      console.warn(`Listing ${listing.id} has non-array listing_images:`, listing.listing_images);
+    }
+    
+    return {
+      ...listing,
+      images: images,
+      tags: Array.isArray(listing.listing_tags) ? listing.listing_tags : [],
+    };
+  });
 
   // Fetch user profiles for unique user_ids
   const userIds = Array.from(new Set(reformattedData.map((listing: any) => listing.user_id)));
@@ -106,6 +128,14 @@ export async function getListings(filters?: {
     ...listing,
     user: userProfiles[listing.user_id] || null
   }));
+
+  // Final validation of image data
+  listingsWithUser.forEach((listing: any) => {
+    if (!Array.isArray(listing.images)) {
+      console.error(`Listing ${listing.id} still has non-array images after processing:`, listing.images);
+      listing.images = []; // Ensure it's always an array
+    }
+  });
 
   return listingsWithUser as (Listing & { user: { user_name: string; full_name?: string } })[];
 }
@@ -179,21 +209,39 @@ export async function getUserListings(userId: string) {
       const enrichedListings = await Promise.all(data.map(async (listing) => {
         try {
           // Get images
-          const { data: imageData } = await supabase
+          const { data: imageData, error: imageError } = await supabase
             .from('listing_images')
             .select('*')
             .eq('listing_id', listing.id);
             
+          if (imageError) {
+            console.error(`Error fetching images for listing ${listing.id}:`, imageError);
+          }
+          
+          // Log image data for debugging
+          console.log(`Listing ${listing.id} image count:`, imageData?.length || 0);
+          if (imageData && imageData.length > 0) {
+            console.log(`Listing ${listing.id} first image sample:`, JSON.stringify(imageData[0]));
+          }
+          
           // Get tags  
-          const { data: tagData } = await supabase
+          const { data: tagData, error: tagError } = await supabase
             .from('listing_tags')
             .select('*')
             .eq('listing_id', listing.id);
             
+          if (tagError) {
+            console.error(`Error fetching tags for listing ${listing.id}:`, tagError);
+          }
+          
+          // Ensure images is always an array
+          const safeImageData = Array.isArray(imageData) ? imageData : [];
+          const safeTagData = Array.isArray(tagData) ? tagData : [];
+            
           return {
             ...listing,
-            images: imageData || [],
-            tags: tagData || []
+            images: safeImageData,
+            tags: safeTagData
           };
         } catch (err) {
           console.log(`Error fetching details for listing ${listing.id}:`, err);
@@ -204,6 +252,14 @@ export async function getUserListings(userId: string) {
           };
         }
       }));
+      
+      // Final validation of image data
+      enrichedListings.forEach((listing: any) => {
+        if (!Array.isArray(listing.images)) {
+          console.error(`Listing ${listing.id} has non-array images after processing:`, listing.images);
+          listing.images = []; // Ensure it's always an array
+        }
+      });
       
       return enrichedListings as unknown as Listing[];
     }

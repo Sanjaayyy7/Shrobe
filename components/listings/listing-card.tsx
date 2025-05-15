@@ -36,34 +36,81 @@ export default function ListingCard({
   const [imageError, setImageError] = useState(false)
   const supabase = createClientComponentClient()
 
-  // Console log for debugging images
+  // Enhanced console log for debugging images
   useEffect(() => {
+    console.log(`Listing ${listing.id} title: ${listing.title}`);
     if (listing.images) {
-      console.log(`Listing ${listing.id} images:`, listing.images);
+      console.log(`Listing ${listing.id} images type:`, Array.isArray(listing.images) ? 'Array' : typeof listing.images);
+      console.log(`Listing ${listing.id} images length:`, Array.isArray(listing.images) ? listing.images.length : 'Not an array');
+      if (Array.isArray(listing.images) && listing.images.length > 0) {
+        console.log(`Listing ${listing.id} first image:`, listing.images[0]);
+      }
     } else {
-      console.log(`Listing ${listing.id} has no images`);
+      console.log(`Listing ${listing.id} has no images array`);
     }
-  }, [listing.id, listing.images]);
+  }, [listing.id, listing.title, listing.images]);
 
   // Get the user information consistently across different API responses
   const userInfo = listing.user || listing.User;
 
-  // Handle image display - accommodate both forms of data structure
+  // Enhanced image handling logic with safe type checking
   const getMainImage = () => {
-    if (!listing.images || listing.images.length === 0) {
+    // Ensure we have an images array
+    if (!listing || !listing.images) {
+      console.log(`Listing ${listing?.id || 'unknown'} - No images property`);
       return null;
     }
     
-    // Check if listing.images is an array of objects with display_order
-    if (typeof listing.images[0].display_order === 'number') {
-      return listing.images.sort((a, b) => a.display_order - b.display_order)[0];
+    // Convert to array if not already
+    const imagesArray = Array.isArray(listing.images) 
+      ? listing.images 
+      : (typeof listing.images === 'object' && listing.images !== null)
+        ? [listing.images] 
+        : [];
+    
+    if (imagesArray.length === 0) {
+      console.log(`Listing ${listing.id} - Images array is empty`);
+      return null;
     }
     
-    // Otherwise just return the first image
-    return listing.images[0];
+    try {
+      // If the images have display_order property, sort by it
+      if (imagesArray.length > 0 && 'display_order' in imagesArray[0] && typeof imagesArray[0].display_order === 'number') {
+        console.log(`Listing ${listing.id} - Using display_order to sort images`);
+        const sortedImages = [...imagesArray].sort((a, b) => a.display_order - b.display_order);
+        return sortedImages[0];
+      }
+      
+      // Otherwise just return the first image
+      console.log(`Listing ${listing.id} - Using first image (no display_order)`);
+      return imagesArray[0];
+    } catch (error) {
+      console.error(`Error getting main image for listing ${listing.id}:`, error);
+      return null;
+    }
   }
 
   const mainImage = getMainImage();
+  
+  // Check if mainImage has valid URL
+  const hasValidImageUrl = mainImage && 
+                          typeof mainImage === 'object' && 
+                          mainImage !== null && 
+                          'image_url' in mainImage && 
+                          typeof mainImage.image_url === 'string';
+  
+  // Log the main image for debugging
+  useEffect(() => {
+    if (mainImage) {
+      console.log(`Listing ${listing.id} main image:`, mainImage);
+      console.log(`Listing ${listing.id} has valid image URL:`, hasValidImageUrl);
+      if (hasValidImageUrl) {
+        console.log(`Listing ${listing.id} image URL:`, mainImage.image_url);
+      }
+    } else {
+      console.log(`Listing ${listing.id} has no main image`);
+    }
+  }, [listing.id, mainImage, hasValidImageUrl]);
 
   const handleTap = () => {
     if (tapCount === 0) {
@@ -165,7 +212,7 @@ export default function ListingCard({
           className="aspect-[3/4] relative overflow-hidden"
           onClick={handleTap}
         >
-          {mainImage && !imageError ? (
+          {hasValidImageUrl && !imageError ? (
             <Image
               src={mainImage.image_url}
               alt={listing.title}

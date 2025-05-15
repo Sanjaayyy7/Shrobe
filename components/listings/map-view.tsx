@@ -19,106 +19,60 @@ export default function MapView({ listings }: MapViewProps) {
   // Load Google Maps API
   const { isLoaded } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries: ["places"],
+    libraries: ["places"]
   })
-
-  // Compute map center from all listings
-  const center = useMemo(() => {
-    if (!listings.length) return { lat: 37.7749, lng: -122.4194 } // Default to San Francisco
-    
-    const validListings = listings.filter(listing => 
-      listing.latitude && listing.longitude
-    )
-    
-    if (!validListings.length) return { lat: 37.7749, lng: -122.4194 }
-    
-    const total = validListings.reduce(
-      (acc, listing) => {
-        return {
-          lat: acc.lat + (listing.latitude || 0),
-          lng: acc.lng + (listing.longitude || 0),
-        }
-      },
-      { lat: 0, lng: 0 }
-    )
-    
-    return {
-      lat: total.lat / validListings.length,
-      lng: total.lng / validListings.length,
-    }
-  }, [listings])
-
-  // Map options with dark theme styling
-  const mapOptions = useMemo(() => ({
-    disableDefaultUI: false,
-    clickableIcons: true,
-    scrollwheel: true,
-    styles: [
-      {
-        featureType: "all",
-        elementType: "geometry",
-        stylers: [{ color: "#242f3e" }]
-      },
-      {
-        featureType: "all",
-        elementType: "labels.text.stroke",
-        stylers: [{ color: "#242f3e" }]
-      },
-      {
-        featureType: "all",
-        elementType: "labels.text.fill",
-        stylers: [{ color: "#746855" }]
-      },
-      {
-        featureType: "water",
-        elementType: "geometry",
-        stylers: [{ color: "#172633" }]
-      },
-      {
-        featureType: "water",
-        elementType: "labels.text.fill",
-        stylers: [{ color: "#515c6d" }]
-      },
-      {
-        featureType: "road",
-        elementType: "geometry",
-        stylers: [{ color: "#38414e" }]
-      },
-      {
-        featureType: "road",
-        elementType: "geometry.stroke",
-        stylers: [{ color: "#212a37" }]
-      },
-    ],
-  }), [])
-
-  // Handle clicking a marker
-  const handleActiveMarker = (markerId: string) => {
-    if (markerId === activeMarker) {
-      // Navigate to listing page if clicked again
-      const listing = listings.find(l => l.id === markerId)
-      if (listing) {
-        router.push(`/listings/${listing.id}`)
-      }
-    } else {
-      setActiveMarker(markerId)
-    }
-  }
-
-  // Reference to Google Map
-  const onMapLoad = useCallback((map: google.maps.Map) => {
-    setMapRef(map)
-  }, [])
-
-  // Only show listings with valid coordinates
+  
+  // Only use listings with valid coordinates
   const validListings = useMemo(() => 
-    listings.filter(listing => listing.latitude && listing.longitude), 
+    listings.filter(listing => 
+      typeof listing.latitude === 'number' && 
+      typeof listing.longitude === 'number' && 
+      !isNaN(listing.latitude) && 
+      !isNaN(listing.longitude)
+    ), 
     [listings]
   )
 
+  // Safe image handling function
+  const getMainImage = (listing: Listing) => {
+    if (!listing || !listing.images) return null;
+    
+    // Convert to array if not already
+    const imagesArray = Array.isArray(listing.images) 
+      ? listing.images 
+      : (typeof listing.images === 'object' && listing.images !== null)
+        ? [listing.images] 
+        : [];
+    
+    if (imagesArray.length === 0) return null;
+    
+    try {
+      // If the images have display_order property, sort by it
+      if (imagesArray.length > 0 && 'display_order' in imagesArray[0] && typeof imagesArray[0].display_order === 'number') {
+        const sortedImages = [...imagesArray].sort((a, b) => a.display_order - b.display_order);
+        return sortedImages[0];
+      }
+      
+      // Otherwise just return the first image
+      return imagesArray[0];
+    } catch (error) {
+      console.error(`Error getting main image for listing ${listing.id}:`, error);
+      return null;
+    }
+  }
+  
+  // Check if image URL is valid
+  const hasValidImageUrl = (img: any) => {
+    return img && 
+           typeof img === 'object' && 
+           img !== null && 
+           'image_url' in img && 
+           typeof img.image_url === 'string';
+  }
+
   if (!isLoaded) {
     return (
-      <div className="h-[600px] w-full bg-gray-900 flex items-center justify-center">
+      <div className="w-full h-[600px] bg-gray-900 rounded-xl flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-t-[#ff65c5] border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-white/70">Loading map...</p>
@@ -127,15 +81,66 @@ export default function MapView({ listings }: MapViewProps) {
     )
   }
 
+  // Default map center
+  const defaultCenter = { lat: 37.7749, lng: -122.4194 }; // San Francisco
+  
+  // Center map on first listing or default to a location
+  const mapCenter = validListings.length > 0 
+    ? { 
+        lat: validListings[0].latitude as number, 
+        lng: validListings[0].longitude as number 
+      }
+    : defaultCenter;
+  
+  const handleMarkerClick = (id: string) => {
+    setActiveMarker(id)
+  }
+  
+  const handleOnLoad = (map: google.maps.Map) => {
+    setMapRef(map)
+  }
+  
+  const handleCenterChanged = () => {
+    if (mapRef) {
+      // Do something when map center changes
+    }
+  }
+  
+  const onMapClick = () => {
+    setActiveMarker(null)
+  }
+
   return (
-    <div className="h-[600px] w-full rounded-xl overflow-hidden">
+    <div className="w-full h-[700px] rounded-xl overflow-hidden">
       <GoogleMap
-        onLoad={onMapLoad}
-        mapContainerClassName="w-full h-full"
-        center={center}
+        center={mapCenter}
         zoom={12}
-        options={mapOptions}
-        onClick={() => setActiveMarker(null)}
+        mapContainerStyle={{ width: '100%', height: '100%' }}
+        options={{
+          styles: [
+            {
+              featureType: "all",
+              elementType: "all",
+              stylers: [
+                { saturation: -100 },
+                { lightness: -20 }
+              ]
+            },
+            {
+              featureType: "road",
+              elementType: "all",
+              stylers: [
+                { lightness: 10 }
+              ]
+            }
+          ],
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false
+        }}
+        onLoad={handleOnLoad}
+        onCenterChanged={handleCenterChanged}
+        onClick={onMapClick}
       >
         <MarkerClusterer>
           {(clusterer) => (
@@ -144,23 +149,22 @@ export default function MapView({ listings }: MapViewProps) {
                 // Skip if no coordinates
                 if (!listing.latitude || !listing.longitude) return null
                 
-                // Get the main image
-                const mainImage = listing.images && listing.images.length > 0
-                  ? listing.images.sort((a, b) => a.display_order - b.display_order)[0]
-                  : null
-                
                 return (
                   <Marker
                     key={listing.id}
-                    position={{
-                      lat: listing.latitude,
-                      lng: listing.longitude
+                    position={{ 
+                      lat: listing.latitude as number, 
+                      lng: listing.longitude as number 
                     }}
-                    onClick={() => handleActiveMarker(listing.id)}
+                    onClick={() => handleMarkerClick(listing.id)}
                     clusterer={clusterer}
                     icon={{
-                      url: "data:image/svg+xml,%3Csvg width='32' height='38' viewBox='0 0 28 36' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M14 0C6.268 0 0 6.268 0 14C0 24.5 14 36 14 36C14 36 28 24.5 28 14C28 6.268 21.732 0 14 0ZM14 19C11.239 19 9 16.761 9 14C9 11.239 11.239 9 14 9C16.761 9 19 11.239 19 14C19 16.761 16.761 19 14 19Z' fill='%23FF5CB1'/%3E%3C/svg%3E",
-                      scaledSize: new google.maps.Size(32, 38)
+                      path: google.maps.SymbolPath.CIRCLE,
+                      fillColor: '#FF5CB1',
+                      fillOpacity: 1,
+                      strokeWeight: 1,
+                      strokeColor: '#FFFFFF',
+                      scale: 10,
                     }}
                     label={{
                       text: `$${Math.round(listing.daily_price)}`,
@@ -169,40 +173,46 @@ export default function MapView({ listings }: MapViewProps) {
                       fontSize: '12px',
                     }}
                   >
+                    {/* Info Window */}
                     {activeMarker === listing.id && (
                       <InfoWindow onCloseClick={() => setActiveMarker(null)}>
                         <div className="bg-gray-900 text-white rounded-lg overflow-hidden w-[250px]">
-                          {mainImage ? (
-                            <div className="relative h-[150px] w-full">
-                              <Image
-                                src={mainImage.image_url}
-                                alt={listing.title}
-                                fill
-                                className="object-cover"
-                              />
-                              <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-full">
-                                <p className="text-white font-medium text-xs flex items-center">
-                                  <DollarSign className="w-3 h-3 mr-0.5" />
-                                  {listing.daily_price}
-                                </p>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="h-[150px] w-full bg-gray-800 flex items-center justify-center">
-                              <span className="text-gray-500 text-sm">No image</span>
-                            </div>
-                          )}
+                          {(() => {
+                            const mainImage = getMainImage(listing);
+                            if (hasValidImageUrl(mainImage)) {
+                              return (
+                                <div className="relative h-[150px] w-full">
+                                  <Image
+                                    src={mainImage.image_url}
+                                    alt={listing.title}
+                                    fill
+                                    className="object-cover"
+                                  />
+                                  <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-full">
+                                    <p className="text-white font-medium text-xs flex items-center">
+                                      <DollarSign className="w-3 h-3 mr-0.5" />
+                                      {listing.daily_price}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            } else {
+                              return (
+                                <div className="h-[150px] w-full bg-gray-800 flex items-center justify-center">
+                                  <span className="text-gray-500 text-sm">No image</span>
+                                </div>
+                              );
+                            }
+                          })()}
                           <div className="p-3">
                             <h3 className="font-medium text-sm mb-1 text-white">{listing.title}</h3>
-                            <p className="text-xs text-gray-400 line-clamp-2">
-                              {listing.location}
-                            </p>
-                            <button 
+                            <p className="text-xs text-gray-400 mb-2">{listing.condition || ''} {listing.brand ? `· ${listing.brand}` : ''}</p>
+                            <button
+                              className="w-full bg-[#FF5CB1] hover:bg-[#ff3d9f] text-white text-xs py-2 rounded-lg font-medium transition-colors"
                               onClick={(e) => {
-                                e.stopPropagation()
-                                router.push(`/listings/${listing.id}`)
+                                e.stopPropagation();
+                                router.push(`/listings/${listing.id}`);
                               }}
-                              className="mt-2 w-full bg-[#FF5CB1] hover:bg-opacity-90 text-white text-xs font-medium py-1.5 px-3 rounded-md transition-colors"
                             >
                               View Details
                             </button>
