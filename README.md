@@ -1,13 +1,15 @@
-# Shrobe Landing Page
+# Shrobe - Fashion Sharing Platform
 
-A modern landing page for Shrobe, a fashion sharing platform, with Supabase integration for email signups.
+A modern platform for renting, sharing, and trading fashion items with location-based features.
 
 ## Features
 
-- Responsive landing page with modern design
-- Email signup form with Supabase integration
-- Mobile-friendly layout
-- Tailwind CSS styling
+- Responsive design with modern UI
+- User authentication with Supabase
+- Listing creation and management
+- Location-based search and map view
+- Image upload and management
+- Real-time messaging
 
 ## Getting Started
 
@@ -15,6 +17,7 @@ A modern landing page for Shrobe, a fashion sharing platform, with Supabase inte
 
 - Node.js 18+ and npm
 - Supabase account
+- Google Maps API key with Places API enabled
 
 ### Environment Setup
 
@@ -23,12 +26,20 @@ Create a `.env.local` file in the root directory with the following variables:
 \`\`\`
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 \`\`\`
+
+### Location Features Setup
+
+1. Create a Google Cloud Platform project
+2. Enable the Maps JavaScript API and Places API
+3. Create an API key with appropriate restrictions
+4. Add the API key to your `.env.local` file
 
 ### Database Setup
 
 1. Create a new Supabase project
-2. Run the SQL migration in `supabase/migrations/20240425_create_signups_table.sql` to create the necessary tables
+2. Run the SQL migrations in `supabase/migrations/` to create the necessary tables
 
 ### Installation
 
@@ -56,6 +67,4 @@ This project can be deployed on Vercel:
 - [Next.js](https://nextjs.org/) - React framework
 - [Tailwind CSS](https://tailwindcss.com/) - CSS framework
 - [Supabase](https://supabase.io/) - Backend as a Service
-\`\`\`
-
-Let's also create a package.json file:
+- [Google Maps Platform](https://cloud.google.com/maps-platform/) - Location services

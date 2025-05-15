@@ -6,6 +6,8 @@ export interface User {
   created_at: string;
 }
 
+export type ListingType = 'Rent' | 'Buy' | 'Sell' | 'Trade';
+
 export interface Listing {
   id: string;
   user_id: string;
@@ -20,6 +22,7 @@ export interface Listing {
   latitude?: number;
   longitude?: number;
   is_available: boolean;
+  listing_type?: ListingType;
   created_at: string;
   updated_at: string;
   
@@ -107,4 +110,33 @@ export type ClothingCategory =
   | 'Streetwear'
   | 'Vintage'
   | 'Designer'
-  | 'Sustainable'; 
+  | 'Sustainable';
+
+export interface CartItem {
+  listing_id: string;
+  quantity: number;
+  listing?: Listing;
+}
+
+export interface Cart {
+  user_id: string;
+  items: CartItem[];
+  total: number;
+}
+
+export interface TradeProposal {
+  id?: string;
+  proposer_id: string;
+  recipient_id: string;
+  offered_listing_ids: string[];
+  requested_listing_id: string;
+  status?: 'pending' | 'accepted' | 'rejected';
+  created_at?: string;
+}
+
+export interface RentalPeriod {
+  start_date: string;
+  end_date: string;
+  total_days: number;
+  total_price: number;
+} 

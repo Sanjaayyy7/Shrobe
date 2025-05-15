@@ -11,6 +11,8 @@ import Header from "@/components/feed/header"
 import { getUserListings } from "@/lib/database"
 import { Listing } from "@/lib/types"
 import ListingGrid from "@/components/listings/listing-grid"
+import ListingCard from "@/components/listings/listing-card"
+import DeleteSelectedListingsButton from "@/components/delete-selected-listings-button"
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -25,6 +27,7 @@ export default function ProfilePage() {
   })
   const [userListings, setUserListings] = useState<Listing[]>([])
   const [listingsLoading, setListingsLoading] = useState(true)
+  const [selectedListings, setSelectedListings] = useState<string[]>([])
 
   const loadUserProfile = async () => {
     try {
@@ -214,6 +217,23 @@ export default function ProfilePage() {
     }
   }
 
+  // Handle toggling selection of listings
+  const handleSelectListing = (id: string, selected: boolean) => {
+    if (selected) {
+      setSelectedListings(prev => [...prev, id]);
+    } else {
+      setSelectedListings(prev => prev.filter(listingId => listingId !== id));
+    }
+  };
+
+  // Handle successful deletion
+  const handleDeleteSuccess = () => {
+    // Refresh listings
+    setUserListings(prev => prev.filter(listing => !selectedListings.includes(listing.id)));
+    // Clear selection
+    setSelectedListings([]);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black text-white">
@@ -321,13 +341,20 @@ export default function ProfilePage() {
           <div className="mb-8">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">Your Closet</h2>
-              <Link 
-                href="/listings/create" 
-                className="bg-[#FF5CB1] hover:bg-[#ff3d9f] text-white px-5 py-2 rounded-full text-sm font-medium transition-colors flex items-center"
-              >
-                <Plus className="w-4 h-4 mr-1.5" />
-                Add Item
-              </Link>
+              <div className="flex gap-2">
+                <DeleteSelectedListingsButton
+                  userId={user?.id}
+                  selectedListings={selectedListings}
+                  onSuccess={handleDeleteSuccess}
+                />
+                <Link 
+                  href="/listings/create" 
+                  className="bg-[#FF5CB1] hover:bg-[#ff3d9f] text-white px-5 py-2 rounded-full text-sm font-medium transition-colors flex items-center"
+                >
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Add Item
+                </Link>
+              </div>
             </div>
             
             {listingsLoading ? (
@@ -338,7 +365,28 @@ export default function ProfilePage() {
                 </div>
               </div>
             ) : userListings.length > 0 ? (
-              <ListingGrid initialListings={userListings} showFilters={false} />
+              <div>
+                {/* Create a custom listing grid with selectable items */}
+                <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {userListings.map((listing) => (
+                    <motion.div
+                      key={listing.id}
+                      layout
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4 }}
+                    >
+                      {/* Use the ListingCard component with selectable prop */}
+                      <ListingCard
+                        listing={listing}
+                        selectable={true}
+                        isSelected={selectedListings.includes(listing.id)}
+                        onSelect={handleSelectListing}
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
             ) : (
               <div className="bg-gray-900/50 backdrop-blur-md rounded-xl border border-white/10 p-8 text-center">
                 <h3 className="text-xl font-medium mb-3">Your closet is empty</h3>
