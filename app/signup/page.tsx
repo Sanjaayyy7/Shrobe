@@ -6,6 +6,31 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 
+function calculateAge(dateString: string): number {
+  const today = new Date()
+  const birthDate = new Date(dateString)
+  let age = today.getFullYear() - birthDate.getFullYear()
+  const m = today.getMonth() - birthDate.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--
+  }
+  return age
+}
+
+function verifyUsername(username: string): boolean {
+  return /^[a-zA-Z0-9_]+$/.test(username)
+}
+
+async function usernameExists(username: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('profile')
+    .select('user_name')
+    .eq('user_name', username)
+    .maybeSingle()
+
+  return !!data
+}
+
 export default function SignupPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -15,6 +40,8 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
   const [fullName, setFullName] = useState('')
   const [username, setUsername] = useState('')
+  const [age, setAge] = useState('')
+  const [dateOfBirth, setDateOfBirth] = useState('')
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,6 +60,28 @@ export default function SignupPage() {
       return
     }
 
+    const age = calculateAge(dateOfBirth)
+
+    if (age < 10 || age > 100) {
+      setError('Age must be between 10 and 100 years')
+      setLoading(false)
+      return
+    }
+
+    // Check if username already exists
+    if (!verifyUsername(username)) {
+      setError("Username must contain only letters and numbers")
+      setLoading(false)
+      return
+    }
+
+    const exists = await usernameExists(username)
+    if (exists) {
+      setError("This username is already taken")
+      setLoading(false)
+      return
+    }
+
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -41,6 +90,8 @@ export default function SignupPage() {
           data: {
             full_name: fullName,
             user_name: username,
+            age: age,
+            date_of_birth: dateOfBirth,
           },
         },
       })
@@ -55,6 +106,7 @@ export default function SignupPage() {
         mail: email,
         user_name: username,
         full_name: fullName,
+        age: age,
         created_at: new Date().toISOString(),
       })
 
@@ -115,6 +167,13 @@ export default function SignupPage() {
             placeholder="Username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            className="w-full px-4 py-3 rounded-lg bg-black/40 border border-white/20 text-white placeholder-gray-400"
+          />
+          <input
+            type="date"
+            placeholder="Date of Birth"
+            value={dateOfBirth}
+            onChange={(e) => setDateOfBirth(e.target.value)}
             className="w-full px-4 py-3 rounded-lg bg-black/40 border border-white/20 text-white placeholder-gray-400"
           />
           <input

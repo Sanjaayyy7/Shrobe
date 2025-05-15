@@ -34,7 +34,8 @@ export default function ProfilePage() {
     fullName: '',
     username: '',
     profilePic: '',
-    biography: ''
+    biography: '',
+    age: '',
   })
 
   const loadUserProfile = async () => {
@@ -56,7 +57,8 @@ export default function ProfilePage() {
             fullName: parsed.fullName || user.user_metadata?.full_name || "User",
             username: parsed.username || user.user_metadata?.user_name || user.email?.split('@')[0] || "username",
             profilePic: user.user_metadata?.avatar_url || "",
-            biography: parsed.biography || ""
+            biography: parsed.biography || "",
+            age: parsed.age || ""
           })
         } catch (e) {
           console.error("Error parsing localStorage", e)
@@ -75,13 +77,15 @@ export default function ProfilePage() {
           ...prev,
           fullName: userData.full_name || prev.fullName,
           username: userData.user_name || prev.username,
-          biography: userData.biography || prev.biography
+          biography: userData.biography || prev.biography,
+          age: userData.age.toString() || prev.age.toString()
         }))
         localStorage.setItem("userProfile", JSON.stringify({
           fullName: userData.full_name,
           username: userData.user_name,
           email: userData.mail,
-          biography: userData.biography
+          biography: userData.biography,
+          age: userData.age.toString()
         }))
       }
     } catch (err) {
@@ -168,6 +172,9 @@ export default function ProfilePage() {
                       {userProfile.fullName}
                     </h1>
                     <p className="text-gray-400">@{userProfile.username}</p>
+                    {userProfile.age && (
+                      <p className="text-gray-400">Age: {userProfile.age}</p>
+                    )}
                   </div>
                   
                   <div className="mt-4 md:mt-0 flex space-x-3">
