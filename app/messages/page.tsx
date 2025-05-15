@@ -85,7 +85,7 @@ export default function MessageLists() {
       <div className="min-h-screen flex items-center justify-center bg-black text-white">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-t-[#ff65c5] border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-lg font-medium">Cargando chats...</p>
+          <p className="text-lg font-medium">Loading chats...</p>
         </div>
       </div>
     )
@@ -94,7 +94,7 @@ export default function MessageLists() {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
       <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 py-4 flex items-center gap-3">
-        <span className="text-2xl font-bold bg-gradient-to-r from-[#ff65c5] to-[#c7aeef] bg-clip-text text-transparent">Mensajes</span>
+        <span className="text-2xl font-bold bg-gradient-to-r from-[#ff65c5] to-[#c7aeef] bg-clip-text text-transparent">Messages</span>
       </div>
       <div className="flex-1 overflow-y-auto">
         <AnimatePresence>
@@ -107,8 +107,8 @@ export default function MessageLists() {
               className="flex flex-col items-center justify-center h-96 text-gray-400"
             >
               <User className="w-16 h-16 mb-4 opacity-30" />
-              <p className="text-lg">No tienes chats todavía</p>
-              <p className="text-sm">¡Empieza una conversación desde el perfil de otro usuario!</p>
+              <p className="text-lg">No chats</p>
+              <p className="text-sm">Start a new conversation!</p>
             </motion.div>
           ) : (
             chats.map((chat, i) => {
