@@ -139,4 +139,31 @@ export interface RentalPeriod {
   end_date: string;
   total_days: number;
   total_price: number;
+}
+
+export interface Order {
+  id: string;
+  user_id: string;
+  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
+  total_amount: number;
+  payment_intent_id: string;
+  shipping_address: any;
+  created_at: string;
+  updated_at?: string;
+  
+  // Relations (not from database)
+  items?: OrderItem[];
+  user?: User;
+}
+
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  listing_id: string;
+  quantity: number;
+  price: number;
+  subtotal: number;
+  
+  // Relations (not from database)
+  listing?: Listing;
 } 

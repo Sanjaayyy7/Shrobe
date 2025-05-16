@@ -57,7 +57,7 @@ export default function ListingCard({
   const getMainImage = () => {
     // Ensure we have an images array
     if (!listing || !listing.images) {
-      console.log(`Listing ${listing?.id || 'unknown'} - No images property`);
+      console.info(`Listing ${listing?.id || 'unknown'} - No images property`);
       return null;
     }
     
@@ -69,21 +69,46 @@ export default function ListingCard({
         : [];
     
     if (imagesArray.length === 0) {
-      console.log(`Listing ${listing.id} - Images array is empty`);
+      console.info(`Listing ${listing.id} - Images array is empty`);
+      return null;
+    }
+    
+    // Debug log all images for this listing
+    console.info(`Found ${imagesArray.length} images for listing ${listing.id}`);
+    imagesArray.forEach((img, index) => {
+      if (img && typeof img === 'object' && 'image_url' in img) {
+        console.debug(`Image ${index}: ${img.image_url.substring(0, 30)}... (for listing ${img.listing_id || 'unknown'})`);
+      }
+    });
+    
+    // Filter out images that don't belong to this listing
+    const filteredImages = imagesArray.filter(img => 
+      img && 
+      typeof img === 'object' && 
+      'listing_id' in img && 
+      img.listing_id === listing.id
+    );
+    
+    if (filteredImages.length < imagesArray.length) {
+      console.debug(`Filtered out ${imagesArray.length - filteredImages.length} images that don't belong to listing ${listing.id}`);
+    }
+    
+    if (filteredImages.length === 0) {
+      console.info(`No valid images found for listing ${listing.id} after filtering`);
       return null;
     }
     
     try {
       // If the images have display_order property, sort by it
-      if (imagesArray.length > 0 && 'display_order' in imagesArray[0] && typeof imagesArray[0].display_order === 'number') {
-        console.log(`Listing ${listing.id} - Using display_order to sort images`);
-        const sortedImages = [...imagesArray].sort((a, b) => a.display_order - b.display_order);
+      if (filteredImages.length > 0 && 'display_order' in filteredImages[0] && typeof filteredImages[0].display_order === 'number') {
+        console.debug(`Listing ${listing.id} - Using display_order to sort images`);
+        const sortedImages = [...filteredImages].sort((a, b) => a.display_order - b.display_order);
         return sortedImages[0];
       }
       
       // Otherwise just return the first image
-      console.log(`Listing ${listing.id} - Using first image (no display_order)`);
-      return imagesArray[0];
+      console.debug(`Listing ${listing.id} - Using first image (no display_order)`);
+      return filteredImages[0];
     } catch (error) {
       console.error(`Error getting main image for listing ${listing.id}:`, error);
       return null;
@@ -97,7 +122,38 @@ export default function ListingCard({
                           typeof mainImage === 'object' && 
                           mainImage !== null && 
                           'image_url' in mainImage && 
-                          typeof mainImage.image_url === 'string';
+                          typeof mainImage.image_url === 'string' && 
+                          mainImage.image_url.trim() !== '';
+  
+  // Create a fallback URL for missing images
+  const getFallbackImageUrl = () => {
+    // Generate a deterministic color based on the listing id
+    const stringToColor = (str: string) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const color = '#' + (Math.abs(hash) % 16777215).toString(16).padStart(6, '0');
+      return color;
+    };
+    
+    // Use images from Unsplash as fallbacks with deterministic selection based on listing ID
+    const placeholderImages = [
+      'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?q=80&w=1974&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?q=80&w=1974&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?q=80&w=1770&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1578932750294-f5075e85f44a?q=80&w=1935&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1576566588028-4147f3842f27?q=80&w=1964&auto=format&fit=crop'
+    ];
+    
+    // Use listing.id to deterministically pick a placeholder image
+    const idSum = listing.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const imageIndex = idSum % placeholderImages.length;
+    
+    return placeholderImages[imageIndex];
+  };
+  
+  const fallbackImageUrl = getFallbackImageUrl();
   
   // Log the main image for debugging
   useEffect(() => {
@@ -212,7 +268,7 @@ export default function ListingCard({
           className="aspect-[3/4] relative overflow-hidden"
           onClick={handleTap}
         >
-          {hasValidImageUrl && !imageError ? (
+          {hasValidImageUrl ? (
             <Image
               src={mainImage.image_url}
               alt={listing.title}
@@ -225,8 +281,17 @@ export default function ListingCard({
               }}
             />
           ) : (
-            <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-              <span className="text-gray-500">No image available</span>
+            <div className="w-full h-full relative">
+              <Image
+                src={fallbackImageUrl}
+                alt={listing.title || "Product image"}
+                fill
+                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-4">
+                <p className="text-white text-xs">Image not available</p>
+              </div>
             </div>
           )}
           

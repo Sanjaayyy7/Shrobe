@@ -1,16 +1,69 @@
 "use client"
 
-import { useState, useMemo, useCallback, useEffect } from "react"
-import { GoogleMap, Marker, useLoadScript, InfoWindow, MarkerClusterer } from "@react-google-maps/api"
+import { useState } from "react"
+// import { GoogleMap, Marker, useLoadScript, InfoWindow, MarkerClusterer } from "@react-google-maps/api"
 import { Listing } from "@/lib/types"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { DollarSign } from "lucide-react"
+import { DollarSign, MapPin } from "lucide-react"
 
 interface MapViewProps {
   listings: Listing[]
 }
 
+export default function MapView({ listings }: MapViewProps) {
+  const router = useRouter()
+  
+  // Simplified version without Google Maps
+  return (
+    <div className="w-full h-[700px] rounded-xl overflow-hidden bg-gray-900 flex flex-col items-center justify-center p-6">
+      <MapPin className="w-16 h-16 text-gray-600 mb-4" />
+      <h3 className="text-xl font-medium text-white mb-2">Map View Temporarily Disabled</h3>
+      <p className="text-gray-400 text-center max-w-md mb-8">
+        To improve performance, the map view has been temporarily disabled. 
+        You can still view all listings in the grid view.
+      </p>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-4xl overflow-y-auto max-h-[400px] p-4">
+        {listings.slice(0, 6).map((listing) => (
+          <div 
+            key={listing.id}
+            className="bg-gray-800 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-750 transition-colors"
+            onClick={() => router.push(`/listings/${listing.id}`)}
+          >
+            <div className="aspect-square relative">
+              {listing.images && listing.images.length > 0 && listing.images[0].image_url ? (
+                <Image
+                  src={listing.images[0].image_url}
+                  alt={listing.title}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                  <span className="text-gray-500">No image</span>
+                </div>
+              )}
+              <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-full">
+                <p className="text-white font-medium text-xs flex items-center">
+                  <DollarSign className="w-3 h-3 mr-0.5" />
+                  {listing.daily_price}
+                </p>
+              </div>
+            </div>
+            <div className="p-3">
+              <h3 className="font-medium text-sm mb-1 text-white">{listing.title}</h3>
+              <p className="text-xs text-gray-400">{listing.condition || ''} {listing.brand ? `· ${listing.brand}` : ''}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Original Google Maps Implementation (commented out)
+/*
 export default function MapView({ listings }: MapViewProps) {
   const router = useRouter()
   const [activeMarker, setActiveMarker] = useState<string | null>(null)
@@ -173,7 +226,7 @@ export default function MapView({ listings }: MapViewProps) {
                       fontSize: '12px',
                     }}
                   >
-                    {/* Info Window */}
+                    {/* Info Window *//*}
                     {activeMarker === listing.id && (
                       <InfoWindow onCloseClick={() => setActiveMarker(null)}>
                         <div className="bg-gray-900 text-white rounded-lg overflow-hidden w-[250px]">
@@ -229,4 +282,5 @@ export default function MapView({ listings }: MapViewProps) {
       </GoogleMap>
     </div>
   )
-} 
+}
+*/ 

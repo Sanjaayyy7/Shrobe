@@ -55,17 +55,33 @@ export default function ListingGrid({
   const fetchListings = async (category?: string) => {
     try {
       setIsLoading(true)
+      setListings([]) // Reset listings while loading
       
       const filters = category && category !== "All Styles" 
         ? { category } 
         : undefined
         
       const data = await getListings(filters)
-      console.log("Fetched listings:", data.length);
-      console.log("First listing images sample:", data[0]?.images);
+      
+      // Log success info
+      console.log(`Fetched ${data.length} listings with category ${category || 'All'}`);
+      
+      // Check if we got empty data
+      if (data.length === 0) {
+        console.log("No listings found for the selected category");
+      } else if (data[0]) { // Check if first item exists before accessing
+        console.log("First listing sample:", {
+          id: data[0].id,
+          title: data[0].title,
+          has_images: Array.isArray(data[0].images) && data[0].images.length > 0
+        });
+      }
+      
       setListings(data)
     } catch (error) {
       console.error("Error fetching listings:", error)
+      // Set empty listings but don't crash
+      setListings([])
     } finally {
       setIsLoading(false)
     }
@@ -73,7 +89,13 @@ export default function ListingGrid({
   
   const handleFilterChange = (category: string) => {
     setActiveFilter(category)
-    fetchListings(category === "All Styles" ? undefined : category)
+    try {
+      fetchListings(category === "All Styles" ? undefined : category)
+    } catch (error) {
+      console.error("Error changing filter category:", error)
+      // Set loading to false in case of error
+      setIsLoading(false)
+    }
   }
   
   const toggleViewMode = (mode: "grid" | "masonry" | "map") => {

@@ -1,5 +1,5 @@
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { Cart, CartItem, RentalPeriod, TradeProposal, Listing } from "./types"
+import { Cart, CartItem, RentalPeriod, TradeProposal, Listing, Order } from "./types"
 
 /**
  * Commerce-related utility functions for the Shrobe application.
@@ -167,36 +167,116 @@ export const submitTradeProposal = async (proposal: TradeProposal): Promise<stri
 }
 
 /**
- * Process a checkout (placeholder for actual payment processing)
+ * Process a checkout using Stripe
  */
 export const processCheckout = async (
   userId: string, 
   items: CartItem[], 
   total: number
-): Promise<{success: boolean, orderId?: string, message?: string}> => {
-  // In a real implementation, this would:
-  // 1. Create an order in the database
-  // 2. Process payment through Stripe or another payment processor
-  // 3. Update inventory/availability of items
-  // 4. Create order history record
-  
+): Promise<{success: boolean, orderId?: string, message?: string, clientSecret?: string}> => {
   try {
-    // Simulate processing delay
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    // Create a payment intent with Stripe
+    const response = await fetch("/api/payment/create-intent", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        cartItems: items,
+      }),
+    });
     
-    // Simulate successful checkout
-    clearCart(userId)
+    const data = await response.json();
     
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to initialize payment");
+    }
+    
+    // Return the client secret for the payment intent
     return {
       success: true,
-      orderId: `ORDER-${Date.now()}`,
-      message: "Order processed successfully"
+      clientSecret: data.clientSecret,
+      message: "Payment intent created successfully"
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error processing checkout:", error)
     return {
       success: false,
-      message: "Failed to process your order"
+      message: error.message || "Failed to process your order"
+    }
+  }
+}
+
+/**
+ * Create an order record in the database after successful payment
+ */
+export const createOrder = async (
+  userId: string,
+  items: CartItem[],
+  paymentIntentId: string,
+  shippingDetails: any
+): Promise<{ success: boolean; orderId?: string; error?: string }> => {
+  const supabase = createClientComponentClient()
+  
+  try {
+    // Calculate order total
+    const totalAmount = calculateCartTotal(items)
+    
+    // Create order record
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        user_id: userId,
+        status: 'paid',
+        total_amount: totalAmount,
+        payment_intent_id: paymentIntentId,
+        shipping_address: shippingDetails,
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single()
+    
+    if (orderError) throw orderError
+    
+    // Create order items
+    const orderItems = items.map(item => ({
+      order_id: order.id,
+      listing_id: item.listing_id,
+      quantity: item.quantity,
+      price: item.listing?.daily_price || 0,
+      subtotal: (item.listing?.daily_price || 0) * item.quantity
+    }))
+    
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .insert(orderItems)
+    
+    if (itemsError) throw itemsError
+    
+    // Update listing availability
+    for (const item of items) {
+      if (item.listing_id) {
+        const { error: updateError } = await supabase
+          .from('listings')
+          .update({ is_available: false })
+          .eq('id', item.listing_id)
+        
+        if (updateError) {
+          console.error(`Failed to update listing ${item.listing_id}:`, updateError)
+          // Continue with other updates even if one fails
+        }
+      }
+    }
+    
+    return {
+      success: true,
+      orderId: order.id
+    }
+  } catch (error: any) {
+    console.error("Error creating order:", error)
+    return {
+      success: false,
+      error: error.message || "Failed to create order record"
     }
   }
 } 

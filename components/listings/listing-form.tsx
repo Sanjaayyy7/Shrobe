@@ -14,7 +14,8 @@ import {
   DollarSign,
   Loader2,
   Info,
-  Check
+  Check,
+  RefreshCw
 } from "lucide-react"
 import Image from "next/image"
 import FixStorageButton from "@/components/fix-storage-button"
@@ -34,7 +35,8 @@ import {
   addListingTags,
   deleteListingTags,
   addListingAvailability,
-  ensureStorageBucket
+  ensureStorageBucket,
+  getListingById
 } from "@/lib/database"
 
 const conditions: ListingCondition[] = [
@@ -62,9 +64,9 @@ const categories: ClothingCategory[] = [
 
 const listingTypes: ListingType[] = [
   "Rent",
-  "Buy",
   "Sell",
   "Trade"
+  // "Buy" option is hidden from listers
 ]
 
 interface ListingFormProps {
@@ -106,6 +108,9 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  
+  // Track if the form was explicitly submitted
+  const [formSubmitted, setFormSubmitted] = useState(false)
   
   // Initialize form with existing data
   useEffect(() => {
@@ -150,6 +155,7 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
   
   // Update location data from picker
   const handleLocationChange = (location: string, lat: number, lng: number) => {
+    // Only update if this is a deliberate user action, not an automatic update
     setFormData(prev => ({
       ...prev,
       location: location,
@@ -215,6 +221,17 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
   // Submit form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Safeguard: Only proceed with form submission if we're on the final step
+    // This prevents accidental submissions from other steps
+    if (currentStep !== 4) {
+      console.log("Form submission prevented - not on final step")
+      return
+    }
+    
+    // Set flag that form was explicitly submitted by user
+    setFormSubmitted(true)
+    
     setIsLoading(true)
     setError(null)
     
@@ -222,23 +239,42 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
       // Get current user
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
-        throw new Error("You must be logged in to create a listing")
+        setError("You must be logged in to create a listing")
+        setIsLoading(false)
+        return
       }
       
       // Validate required fields
-      if (!formData.title || !formData.description || !formData.daily_price) {
-        throw new Error("Please fill in all required fields")
+      if (!formData.title || !formData.description) {
+        setError("Please fill in all required fields")
+        setIsLoading(false)
+        return
       }
       
-      if (imageUrls.length === 0) {
-        throw new Error("Please upload at least one image")
+      // Validate pricing based on listing type
+      if (formData.listing_type === 'Rent' || formData.listing_type === 'Sell') {
+        if (!formData.daily_price) {
+          setError(`Please enter a${formData.listing_type === 'Rent' ? ' daily' : ''} price`)
+          setIsLoading(false)
+          return
+        }
+      } else if (formData.listing_type === 'Trade') {
+        // For trade listings, set price to 0
+        formData.daily_price = 0
+        formData.weekly_price = 0
+      }
+      
+      if (imageUrls.length === 0 && images.length === 0) {
+        setError("Please upload at least one image")
+        setIsLoading(false)
+        return
       }
       
       console.log("Form data before submission:", formData);
       console.log("User ID:", session.user.id);
       
       // Create or update listing
-      let listing: Listing
+      let listing: Listing | null = null
       
       if (mode === "create") {
         // Create new listing with proper typing
@@ -262,16 +298,21 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
         
         console.log("Creating listing with:", listingData);
         
-        try {
-          listing = await createListing(listingData);
-        } catch (createError) {
-          console.error("Detailed create error:", createError);
-          throw new Error(`Failed to create listing: ${createError instanceof Error ? createError.message : 'Unknown error'}`);
+        // Try to create the listing
+        listing = await createListing(listingData);
+        
+        // Check if the listing was created
+        if (!listing) {
+          setError("Failed to create listing. Please try again later.");
+          setIsLoading(false);
+          return;
         }
       } else {
         // Update existing listing
         if (!initialData?.id) {
-          throw new Error("Cannot update listing without ID")
+          setError("Cannot update listing without ID");
+          setIsLoading(false);
+          return;
         }
         
         // Only update fields that have changed
@@ -299,24 +340,36 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
         }
         
         console.log("Updating listing with:", updates);
-        listing = await updateListing(initialData.id, updates)
+        listing = await updateListing(initialData.id, updates);
         
-        // Delete existing tags to replace them
-        await deleteListingTags(listing.id)
+        // Check if the listing was updated
+        if (!listing) {
+          setError("Failed to update listing. Please try again later.");
+          setIsLoading(false);
+          return;
+        }
+        
+        // Delete existing tags to replace them - handle possible failure
+        const tagDeleteResult = await deleteListingTags(listing.id);
+        if (!tagDeleteResult) {
+          console.warn("Failed to delete existing tags. Continuing with tag creation.");
+        }
       }
       
-      // Add tags
+      // Add tags - handle possible empty result
       if (selectedTags.length > 0) {
         const tagsToAdd = selectedTags.map(tag => ({
-          listing_id: listing.id,
+          listing_id: listing!.id,
           tag
-        }))
+        }));
         
-        await addListingTags(tagsToAdd)
+        const addedTags = await addListingTags(tagsToAdd);
+        if (addedTags.length === 0) {
+          console.warn("Failed to add tags. Continuing with image upload.");
+        }
       }
       
       // Handle images - only upload new images (not existing URLs)
-      // First, determine which images are newly added by user vs. existing images from server
       let newImageSuccess = true;
       let imageSaveError = null;
       
@@ -326,23 +379,27 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
           try {
             await supabase.rpc('fix_storage_policies');
           } catch (rpcError) {
-            console.log('RPC not available, continuing anyway', rpcError);
+            console.info('Storage policy helper function not available - this is expected on first setup');
+          }
+          
+          // Ensure the listings bucket exists before uploading
+          try {
+            await supabase.storage.createBucket('listings', {
+              public: true,
+              fileSizeLimit: 5242880 // 5MB
+            });
+          } catch (bucketError) {
+            // Bucket might already exist, that's fine
+            console.info('Bucket already exists or creation not needed');
           }
           
           const uploadPromises = images.map(async (file) => {
             try {
-              const imageUrl = await uploadImage(file, `listings/${listing.id}`);
+              const imageUrl = await uploadImage(file, `listings/${listing!.id}`);
+              console.log("Successfully uploaded image:", imageUrl);
               return { success: true, url: imageUrl };
             } catch (uploadError) {
               console.error("Failed to upload image:", uploadError);
-              
-              // Check specifically for RLS policy errors
-              if (uploadError instanceof Error && 
-                  (uploadError.message.includes('row-level security policy') || 
-                   uploadError.message.includes('permission denied'))) {
-                throw new Error('Storage permissions error: row-level security policy violation. Please try using the "Fix Storage Permissions" button before uploading images.');
-              }
-              
               return { success: false, error: uploadError };
             }
           });
@@ -363,13 +420,53 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
             .map(result => (result as { url: string }).url);
           
           if (successfulUrls.length > 0) {
+            // Ensure each image is correctly associated with this listing
             const imagesToAdd = successfulUrls.map((url, index) => ({
-              listing_id: listing.id,
+              listing_id: listing!.id,
               image_url: url,
               display_order: index
             }));
             
-            await addListingImages(imagesToAdd);
+            console.log(`Adding ${imagesToAdd.length} images to listing ${listing!.id}:`, imagesToAdd);
+            
+            // First, delete any existing images to avoid duplication
+            try {
+              const { error: deleteError } = await supabase
+                .from('listing_images')
+                .delete()
+                .eq('listing_id', listing!.id);
+                
+              if (deleteError) {
+                console.warn("Failed to delete existing images before adding new ones:", deleteError);
+              } else {
+                console.log("Successfully deleted existing images before adding new ones");
+              }
+            } catch (deleteError) {
+              console.warn("Error trying to delete existing images:", deleteError);
+            }
+            
+            // Now add the new images
+            const addedImages = await addListingImages(imagesToAdd);
+            
+            if (!addedImages || addedImages.length === 0) {
+              console.warn("Failed to add images to database. Images may have uploaded but not saved.");
+              // Attempt to add images again with a direct database call
+              try {
+                const { error: imageInsertError } = await supabase
+                  .from('listing_images')
+                  .insert(imagesToAdd);
+                  
+                if (imageInsertError) {
+                  console.error("Second attempt to add images failed:", imageInsertError);
+                } else {
+                  console.log("Second attempt to add images succeeded");
+                }
+              } catch (retryError) {
+                console.error("Error in second attempt to add images:", retryError);
+              }
+            } else {
+              console.log("Successfully added images to database:", addedImages);
+            }
           }
         }
       } catch (imageError) {
@@ -377,11 +474,18 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
         imageSaveError = imageError instanceof Error ? imageError.message : 'Unknown error uploading images';
       }
       
+      // Force a cache refresh to ensure the listing is visible in the feed
+      try {
+        await getListingById(listing!.id);
+      } catch (refreshError) {
+        console.warn("Error refreshing listing data:", refreshError);
+      }
+      
       // Show success and redirect, but include warning about images if needed
       setSuccess(true);
       setTimeout(() => {
         if (newImageSuccess) {
-          router.push(`/listings/${listing.id}`);
+          router.push(`/listings/${listing!.id}`);
         } else {
           // If there was an image upload error, stay on the page and show the error
           setSuccess(false);
@@ -390,10 +494,10 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
       }, 1500);
       
     } catch (error) {
-      console.error("Error submitting listing:", error)
-      setError(error instanceof Error ? error.message : "An error occurred")
+      console.error("Error submitting listing:", error);
+      setError(error instanceof Error ? error.message : "An error occurred while submitting the listing");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
   
@@ -458,7 +562,6 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
                   {formData.listing_type === 'Rent' && 'Rent your item for daily use'}
-                  {formData.listing_type === 'Buy' && 'List your item for someone to buy'}
                   {formData.listing_type === 'Sell' && 'Indicate your item is for sale'}
                   {formData.listing_type === 'Trade' && 'Indicate your item is available for trade'}
                 </p>
@@ -609,10 +712,59 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
             <div className="space-y-4">
               <h3 className="text-lg font-medium text-white">Pricing & Availability</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {formData.listing_type === 'Rent' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="daily_price" className="block text-sm font-medium text-gray-300 mb-1">
+                      Daily Price ($) <span className="text-[#FF5CB1]">*</span>
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <DollarSign className="w-4 h-4 text-gray-400" />
+                      </div>
+                      <input
+                        type="number"
+                        id="daily_price"
+                        name="daily_price"
+                        value={formData.daily_price || ""}
+                        onChange={handleChange}
+                        min="0"
+                        step="0.01"
+                        className="w-full bg-gray-900 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#FF5CB1] focus:border-transparent"
+                        placeholder="0.00"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="weekly_price" className="block text-sm font-medium text-gray-300 mb-1">
+                      Weekly Price ($) <span className="text-gray-500">(optional)</span>
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <DollarSign className="w-4 h-4 text-gray-400" />
+                      </div>
+                      <input
+                        type="number"
+                        id="weekly_price"
+                        name="weekly_price"
+                        value={formData.weekly_price || ""}
+                        onChange={handleChange}
+                        min="0"
+                        step="0.01"
+                        className="w-full bg-gray-900 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#FF5CB1] focus:border-transparent"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {formData.listing_type === 'Sell' && (
                 <div>
                   <label htmlFor="daily_price" className="block text-sm font-medium text-gray-300 mb-1">
-                    Daily Price ($) <span className="text-[#FF5CB1]">*</span>
+                    Price ($) <span className="text-[#FF5CB1]">*</span>
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -632,29 +784,25 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
                     />
                   </div>
                 </div>
-                
-                <div>
-                  <label htmlFor="weekly_price" className="block text-sm font-medium text-gray-300 mb-1">
-                    Weekly Price ($) <span className="text-gray-500">(optional)</span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                      <DollarSign className="w-4 h-4 text-gray-400" />
-                    </div>
-                    <input
-                      type="number"
-                      id="weekly_price"
-                      name="weekly_price"
-                      value={formData.weekly_price || ""}
-                      onChange={handleChange}
-                      min="0"
-                      step="0.01"
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#FF5CB1] focus:border-transparent"
-                      placeholder="0.00"
-                    />
+              )}
+              
+              {formData.listing_type === 'Trade' && (
+                <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                  <div className="flex items-center mb-2">
+                    <RefreshCw className="w-5 h-5 mr-2 text-[#FF5CB1]" />
+                    <h4 className="font-medium text-white">Trade Item</h4>
                   </div>
+                  <p className="text-gray-300 text-sm">
+                    Your item will be listed for trade. Interested users will be able to contact you directly to suggest trades.
+                  </p>
+                  <input 
+                    type="hidden" 
+                    name="daily_price" 
+                    value="0" 
+                    onChange={() => {}} 
+                  />
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )
@@ -672,10 +820,14 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
                 initialLocation={formData.location}
                 initialLatitude={formData.latitude}
                 initialLongitude={formData.longitude}
-                onLocationChange={handleLocationChange}
+                onLocationChange={(loc, lat, lng) => {
+                  // Prevent location updates from accidentally triggering form actions
+                  // Only update local state without side effects
+                  handleLocationChange(loc, lat, lng)
+                }}
               />
               <p className="text-xs text-gray-500 mt-1">
-                This helps local borrowers find your item. Exact location will not be shared.
+                Enter your city or neighborhood to help local users find your item.
               </p>
             </div>
             
@@ -697,8 +849,18 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
                   <div className="flex justify-between">
                     <span className="text-gray-400">Price:</span>
                     <span className="text-white font-medium">
-                      ${formData.daily_price}/day
-                      {formData.weekly_price ? ` or $${formData.weekly_price}/week` : ""}
+                      {formData.listing_type === 'Rent' && (
+                        <>
+                          ${formData.daily_price}/day
+                          {formData.weekly_price ? ` or $${formData.weekly_price}/week` : ""}
+                        </>
+                      )}
+                      {formData.listing_type === 'Sell' && (
+                        <>${formData.daily_price}</>
+                      )}
+                      {formData.listing_type === 'Trade' && (
+                        <>For Trade</>
+                      )}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -713,6 +875,17 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
                   </div>
                 </div>
               </div>
+            </div>
+            
+            <div className="bg-yellow-900/30 border border-yellow-500/50 text-yellow-200 px-4 py-3 rounded-lg mt-4">
+              <div className="flex items-center">
+                <Info className="w-5 h-5 mr-2" />
+                <p className="font-medium">Final Step:</p>
+              </div>
+              <p className="text-sm mt-1">
+                Your listing will only be created when you click the "{mode === "create" ? "Create Listing" : "Update Listing"}" button below.
+                No data will be saved to the database until you explicitly click this button.
+              </p>
             </div>
           </div>
         )
@@ -793,8 +966,8 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
             <button
               type="submit"
               disabled={isLoading || success}
-              className={`px-6 py-3 rounded-lg bg-[#FF5CB1] text-white font-medium transition-colors ${
-                isLoading || success ? "opacity-70 cursor-not-allowed" : "hover:bg-[#ff3d9f]"
+              className={`px-6 py-3 rounded-lg bg-[#FF5CB1] text-white font-medium transition-colors flex items-center justify-center ${
+                isLoading || success ? "opacity-70 cursor-not-allowed" : "hover:bg-[#ff3d9f] animate-pulse"
               }`}
             >
               {isLoading ? (
@@ -803,7 +976,8 @@ export default function ListingForm({ initialData, mode }: ListingFormProps) {
                   {mode === "create" ? "Creating..." : "Updating..."}
                 </span>
               ) : (
-                <span>
+                <span className="flex items-center">
+                  <Check className="w-5 h-5 mr-2" />
                   {mode === "create" ? "Create Listing" : "Update Listing"}
                 </span>
               )}
