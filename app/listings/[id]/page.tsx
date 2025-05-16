@@ -320,23 +320,23 @@ const ListingMetadataBlock = ({ listing }: { listing: Listing }) => {
         </h3>
         
         <div className="grid grid-cols-2 md:grid-cols-3 gap-y-5 gap-x-6">
-          {listing.brand && (
+      {listing.brand && (
             <div className="border-l-2 border-[#FF5CB1]/40 pl-3">
               <h4 className="text-xs uppercase tracking-wider text-gray-400 mb-1">Brand</h4>
               <p className="font-medium text-white">{listing.brand}</p>
-            </div>
-          )}
-          
-          {listing.size && (
+        </div>
+      )}
+      
+      {listing.size && (
             <div className="border-l-2 border-[#FF5CB1]/40 pl-3">
               <h4 className="text-xs uppercase tracking-wider text-gray-400 mb-1">Size</h4>
               <div className="flex items-center">
                 <span className="bg-gray-800 rounded-md px-2.5 py-1 font-medium text-white">{listing.size}</span>
               </div>
-            </div>
-          )}
-          
-          {listing.condition && (
+        </div>
+      )}
+      
+      {listing.condition && (
             <div className="border-l-2 border-[#FF5CB1]/40 pl-3">
               <h4 className="text-xs uppercase tracking-wider text-gray-400 mb-1">Condition</h4>
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -350,9 +350,9 @@ const ListingMetadataBlock = ({ listing }: { listing: Listing }) => {
               }`}>
                 {listing.condition}
               </span>
-            </div>
-          )}
-          
+        </div>
+      )}
+      
           {listing.listing_type && (
             <div className="border-l-2 border-[#FF5CB1]/40 pl-3">
               <h4 className="text-xs uppercase tracking-wider text-gray-400 mb-1">Listing Type</h4>
@@ -382,7 +382,7 @@ const ListingMetadataBlock = ({ listing }: { listing: Listing }) => {
             <div className="bg-[#FF5CB1]/20 rounded-full p-2 mr-3">
               <MapPin className="w-5 h-5 text-[#FF5CB1]" />
             </div>
-            <div>
+        <div>
               <p className="text-white font-medium">{listing.location}</p>
               <p className="text-xs text-gray-400 mt-1">General area - exact location shared after booking</p>
             </div>
@@ -432,13 +432,13 @@ const CTAButtonGroup = ({
       
       {(!listing.listing_type || listing.listing_type === 'Rent') && (
         <div className="space-y-4">
-          <button 
-            onClick={onRentNow}
+        <button 
+          onClick={onRentNow}
             className="w-full bg-gradient-to-r from-[#FF5CB1] to-[#c7aeef] text-white py-4 px-6 rounded-xl font-semibold transition-all hover:shadow-[0_0_20px_rgba(255,92,177,0.3)] flex items-center justify-center text-lg"
-          >
-            <Calendar className="w-5 h-5 mr-2" />
+        >
+          <Calendar className="w-5 h-5 mr-2" />
             Rent This Item
-          </button>
+        </button>
           <button
             onClick={onContactSeller}
             className="w-full bg-gray-800 hover:bg-gray-700 text-white py-3.5 rounded-xl font-medium transition-colors flex items-center justify-center"
@@ -459,38 +459,38 @@ const CTAButtonGroup = ({
             Buy Now
           </button>
           <div className="flex gap-4">
-            <button 
-              onClick={onAddToCart}
-              disabled={isAddingToCart}
+          <button 
+            onClick={onAddToCart}
+            disabled={isAddingToCart}
               className="flex-1 border border-white/20 hover:border-white/40 bg-gray-900 hover:bg-gray-800 text-white py-3.5 rounded-xl font-medium transition-colors flex items-center justify-center"
-            >
-              {isAddingToCart ? (
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              ) : (
-                <ShoppingCart className="w-5 h-5 mr-2" />
-              )}
-              Add to Cart
-            </button>
-            <button
-              onClick={onContactSeller}
+          >
+            {isAddingToCart ? (
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+            ) : (
+              <ShoppingCart className="w-5 h-5 mr-2" />
+            )}
+            Add to Cart
+          </button>
+        <button 
+          onClick={onContactSeller}
               className="flex-1 border border-white/20 hover:border-white/40 bg-gray-900 hover:bg-gray-800 text-white py-3.5 rounded-xl font-medium transition-colors flex items-center justify-center"
-            >
-              <MessageCircle className="w-5 h-5 mr-2" />
+        >
+          <MessageCircle className="w-5 h-5 mr-2" />
               Message
-            </button>
+        </button>
           </div>
         </div>
       )}
       
       {listing.listing_type === 'Trade' && (
         <div className="space-y-4">
-          <button 
-            onClick={onTradeNow}
+        <button 
+          onClick={onTradeNow}
             className="w-full bg-gradient-to-r from-[#FF5CB1] to-[#c7aeef] text-white py-4 px-6 rounded-xl font-semibold transition-all hover:shadow-[0_0_20px_rgba(255,92,177,0.3)] flex items-center justify-center text-lg"
-          >
-            <RefreshCw className="w-5 h-5 mr-2" />
-            Propose Trade
-          </button>
+        >
+          <RefreshCw className="w-5 h-5 mr-2" />
+          Propose Trade
+        </button>
           <button
             onClick={onContactSeller}
             className="w-full bg-gray-800 hover:bg-gray-700 text-white py-3.5 rounded-xl font-medium transition-colors flex items-center justify-center"
@@ -601,15 +601,15 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
         // Check if listing is saved
         if (session?.user) {
           try {
-            const { data } = await supabase
-              .from('wishlist')
-              .select()
-              .match({ 
-                user_id: session.user.id,
-                listing_id: id
-              })
+          const { data } = await supabase
+            .from('wishlist')
+            .select()
+            .match({ 
+              user_id: session.user.id,
+              listing_id: id
+            })
               .single();
-            
+          
             setIsSaved(!!data);
           } catch (wishlistError) {
             // This is non-critical, just log a message and continue
@@ -722,10 +722,10 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
     
     switch (listing.listing_type) {
       case 'Rent':
-        return `$${listing.daily_price}/day`;
+      return `$${listing.daily_price}/day`;
       case 'Buy':
       case 'Sell':
-        return `$${listing.daily_price}`;
+      return `$${listing.daily_price}`;
       case 'Trade':
         return 'Available for Trade';
       default:
@@ -859,7 +859,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
     // Give localStorage a moment to update
     setTimeout(() => {
       console.log("Redirecting to checkout...");
-      handleCheckout()
+    handleCheckout()
     }, 500)
   }
   
@@ -1070,14 +1070,14 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
             </div>
             <h1 className="text-2xl font-bold mb-4">Listing Not Found</h1>
             <p className="text-gray-400 mb-8">{error || "The listing you're looking for doesn't exist or has been removed."}</p>
-            <Link
-              href="/feed"
+        <Link
+          href="/feed"
               className="bg-[#FF5CB1] hover:bg-[#ff3d9f] text-white px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center"
-            >
+        >
               <ChevronLeft className="w-4 h-4 mr-2" />
-              Back to Feed
-            </Link>
-          </div>
+          Back to Feed
+        </Link>
+        </div>
         </div>
       ) : (
         <main className="bg-black text-white min-h-screen pb-20">
@@ -1089,23 +1089,23 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
             >
               <ChevronLeft className="w-5 h-5 text-white" />
             </Link>
-          </div>
-          
+      </div>
+      
           {/* Main content with left-right split */}
           <div className="container mx-auto pt-20">
             <div className="flex flex-col lg:flex-row lg:gap-8 xl:gap-12">
               {/* Left side - Image gallery */}
               <div className="lg:w-3/5 mb-8 lg:mb-0 lg:sticky lg:top-24 lg:self-start">
-                <ListingImageCarousel 
-                  images={sortedImages} 
-                  title={listing.title} 
-                  isAvailable={listing.is_available} 
+            <ListingImageCarousel 
+              images={sortedImages} 
+              title={listing.title} 
+              isAvailable={listing.is_available} 
                   listingId={listing.id}
                   fallbackImages={fallbackImages}
                   listingType={listing.listing_type}
-                />
-              </div>
-              
+            />
+          </div>
+          
               {/* Right side - Product details */}
               <div className="lg:w-2/5">
                 <div className="space-y-8">
@@ -1129,55 +1129,55 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                     <div className="flex justify-between items-start gap-4">
                       <h1 className="text-3xl font-bold text-white tracking-tight leading-tight flex-1">{listing.title}</h1>
                       <div className="flex gap-2 flex-shrink-0">
-                        <button
-                          onClick={toggleSaved}
-                          className={`p-2 rounded-full ${
-                            isSaved 
-                              ? 'bg-[#FF5CB1]/20 text-[#FF5CB1]' 
+                  <button
+                    onClick={toggleSaved}
+                    className={`p-2 rounded-full ${
+                      isSaved 
+                        ? 'bg-[#FF5CB1]/20 text-[#FF5CB1]' 
                               : 'bg-gray-800/80 text-white/70 hover:text-white hover:bg-gray-700/80'
-                          }`}
-                          aria-label={isSaved ? "Remove from wishlist" : "Add to wishlist"}
-                        >
-                          <Bookmark 
+                    }`}
+                    aria-label={isSaved ? "Remove from wishlist" : "Add to wishlist"}
+                  >
+                    <Bookmark 
                             className={`w-5 h-5 ${isSaved ? 'fill-[#FF5CB1] text-[#FF5CB1]' : ''}`} 
-                          />
-                        </button>
-                        <button
+                    />
+                  </button>
+                  <button
                           className="p-2 rounded-full bg-gray-800/80 text-white/70 hover:text-white hover:bg-gray-700/80"
-                          aria-label="Share listing"
-                          onClick={handleShare}
-                        >
-                          <Share className="w-5 h-5" />
-                        </button>
-                        {isOwner && (
-                          <Link
-                            href={`/listings/${listing.id}/edit`}
+                    aria-label="Share listing"
+                    onClick={handleShare}
+                  >
+                    <Share className="w-5 h-5" />
+                  </button>
+                  {isOwner && (
+                    <Link
+                      href={`/listings/${listing.id}/edit`}
                             className="p-2 rounded-full bg-gray-800/80 text-white/70 hover:text-white hover:bg-gray-700/80"
-                            aria-label="Edit listing"
-                          >
-                            <Edit className="w-5 h-5" />
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-                    
+                      aria-label="Edit listing"
+                    >
+                      <Edit className="w-5 h-5" />
+                    </Link>
+                  )}
+                </div>
+              </div>
+              
                     {/* Pricing section - only show if not trade type */}
                     {listing.listing_type !== 'Trade' && (
                       <div className="bg-gradient-to-r from-[#FF5CB1]/10 to-[#c7aeef]/10 p-5 rounded-xl border border-[#FF5CB1]/20">
-                        <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center">
                           <div>
                             <p className="text-sm text-gray-400 mb-1">Price</p>
                             <div className="flex items-baseline gap-3">
                               <p className="text-3xl font-bold text-white">{getPriceDisplay()}</p>
-                              {listing.weekly_price && listing.listing_type === 'Rent' && (
+                    {listing.weekly_price && listing.listing_type === 'Rent' && (
                                 <p className="text-gray-400">${listing.weekly_price}/week</p>
-                              )}
-                            </div>
-                          </div>
+                    )}
+                  </div>
+                </div>
                           {listing.listing_type === 'Rent' && (
                             <div className="bg-black/30 px-3 py-1 rounded-lg">
                               <p className="text-sm text-white">Rental</p>
-                            </div>
+              </div>
                           )}
                         </div>
                       </div>
@@ -1205,16 +1205,16 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                     <div className="p-5">
                       <div className="flex items-center gap-4">
                         <Avatar className="w-14 h-14 border-2 border-[#FF5CB1]">
-                          <AvatarImage src="" />
+                  <AvatarImage src="" />
                           <AvatarFallback className="bg-gray-700 text-white text-lg">
-                            {listing.user?.full_name?.charAt(0) || listing.user?.user_name?.charAt(0) || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
+                    {listing.user?.full_name?.charAt(0) || listing.user?.user_name?.charAt(0) || 'U'}
+                  </AvatarFallback>
+                </Avatar>
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
-                            <div>
+                <div>
                               <p className="font-semibold text-lg text-white">
-                                {listing.user?.full_name || listing.user?.user_name || 'Unknown User'}
+                    {listing.user?.full_name || listing.user?.user_name || 'Unknown User'}
                               </p>
                               <div className="flex items-center text-yellow-400 mt-1">
                                 <Star className="w-4 h-4 fill-yellow-400 mr-1" />
@@ -1223,20 +1223,20 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                                 <Star className="w-4 h-4 fill-yellow-400 mr-1" />
                                 <Star className="w-4 h-4 fill-yellow-400 mr-1" />
                                 <span className="text-sm text-gray-300 ml-1">5.0 (12)</span>
-                              </div>
-                            </div>
-                            <button 
+                  </div>
+                  </div>
+                  <button 
                               onClick={(e) => {
                                 e.stopPropagation();
                                 router.push(`/messages/${listing.user?.id}`);
                               }}
                               className="bg-[#FF5CB1] hover:bg-[#ff3d9f] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                              Message
-                            </button>
+                    Message
+                  </button>
                           </div>
                         </div>
-                      </div>
-                      
+              </div>
+              
                       <div className="mt-3 flex items-center text-gray-400 text-sm">
                         <Check className="w-4 h-4 text-green-400 mr-1" />
                         <span>Verified Seller</span>
@@ -1244,8 +1244,8 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                         <span>Member since {new Date(listing.created_at || '').getFullYear()}</span>
                       </div>
                     </div>
-                  </div>
-                  
+                </div>
+                
                   {/* Description - only show if it exists */}
                   {listing.description && (
                     <div className="bg-[#111] rounded-xl p-5 border border-gray-800">
@@ -1255,54 +1255,54 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                   )}
                   
                   {/* Item details section */}
-                  <ListingMetadataBlock listing={listing} />
-                  
+                <ListingMetadataBlock listing={listing} />
+                
                   {/* Categories/Tags */}
-                  {listing.tags && listing.tags.length > 0 && (
-                    <div>
+                {listing.tags && listing.tags.length > 0 && (
+                  <div>
                       <h2 className="text-xl font-semibold mb-3">Categories</h2>
-                      <div className="flex flex-wrap gap-2">
-                        {listing.tags.map((tag) => (
-                          <span 
-                            key={tag.id} 
+                    <div className="flex flex-wrap gap-2">
+                      {listing.tags.map((tag) => (
+                        <span 
+                          key={tag.id} 
                             className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-2 rounded-full text-sm flex items-center transition-colors cursor-pointer"
-                          >
+                        >
                             <Tag className="w-4 h-4 mr-1.5" />
-                            {tag.tag}
-                          </span>
-                        ))}
-                      </div>
+                          {tag.tag}
+                        </span>
+                      ))}
                     </div>
-                  )}
-                  
+                  </div>
+                )}
+                
                   {/* CTA buttons */}
-                  <CTAButtonGroup 
-                    listing={listing}
-                    isOwner={isOwner}
-                    onRentNow={handleRentNow}
-                    onAddToCart={handleAddToCart}
-                    onBuyNow={handleBuyNow}
-                    onContactSeller={handleContactSeller}
-                    onTradeNow={handleTradeNow}
-                    isAddingToCart={isAddingToCart}
-                  />
-                  
-                  {/* Edit button for owner */}
-                  {isOwner && (
+                <CTAButtonGroup 
+                  listing={listing}
+                  isOwner={isOwner}
+                  onRentNow={handleRentNow}
+                  onAddToCart={handleAddToCart}
+                  onBuyNow={handleBuyNow}
+                  onContactSeller={handleContactSeller}
+                  onTradeNow={handleTradeNow}
+                  isAddingToCart={isAddingToCart}
+                />
+                
+                {/* Edit button for owner */}
+                {isOwner && (
                     <div>
-                      <Link 
-                        href={`/listings/${listing.id}/edit`}
+                    <Link 
+                      href={`/listings/${listing.id}/edit`}
                         className="w-full bg-gray-800 hover:bg-gray-700 text-white py-3 rounded-xl font-medium transition-colors flex items-center justify-center"
-                      >
-                        <Edit className="w-5 h-5 mr-2" />
+                    >
+                      <Edit className="w-5 h-5 mr-2" />
                         Edit Your Listing
-                      </Link>
-                    </div>
-                  )}
-                </div>
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
           </div>
+        </div>
         </main>
       )}
       
