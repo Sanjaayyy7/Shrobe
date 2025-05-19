@@ -294,12 +294,12 @@ export default function FeedPage() {
         <div className="container mx-auto px-4 pt-24 pb-20">
           {/* User Avatar Stories */}
           <div className="mb-12">
-            <UserAvatarStories />
+            {/*<UserAvatarStories />*/}
           </div>
           
           {/* Featured Closets */}
           <div className="mb-12">
-            <UserClosetHighlights />
+            {/*<UserClosetHighlights />*/}
           </div>
           
           {/* Main content */}

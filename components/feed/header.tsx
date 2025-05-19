@@ -187,7 +187,7 @@ export default function Header() {
           {/* Actions - Hidden on mobile, visible on md+ */}
           <div className="hidden md:flex items-center space-x-3">
             {/* Add to Closet Button */}
-            <motion.button 
+            {/*<motion.button 
               className="flex items-center space-x-1 px-4 py-1.5 bg-gradient-to-r from-[#ff65c5] to-[#c7aeef] text-white rounded-full text-sm font-medium relative group overflow-hidden"
               whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(255,101,197,0.5)" }}
               whileTap={{ scale: 0.98 }}
@@ -201,7 +201,7 @@ export default function Header() {
                 whileHover={{ x: "100%" }}
                 transition={{ duration: 0.4 }}
               />
-            </motion.button>
+            </motion.button>*/}
             
             {/* Icons */}
             <motion.button 
@@ -213,7 +213,7 @@ export default function Header() {
               <Search className="w-5 h-5" />
             </motion.button>
             
-            <motion.button 
+            {/*<motion.button 
               className="w-9 h-9 flex items-center justify-center text-white/70 hover:text-white rounded-full hover:bg-white/10 transition-colors relative"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -230,7 +230,7 @@ export default function Header() {
                   ease: "easeInOut"
                 }}
               />
-            </motion.button>
+            </motion.button>*/}
             
             <motion.button 
               className="w-9 h-9 flex items-center justify-center text-white/70 hover:text-white rounded-full hover:bg-white/10 transition-colors relative"
@@ -305,19 +305,8 @@ export default function Header() {
       </div>
       
       {/* Animated gradient line at bottom */}
-      <div className="absolute left-0 right-0 bottom-0 h-[1px] overflow-hidden">
-        <motion.div 
-          className="absolute inset-0 bg-gradient-to-r from-[#ff65c5] via-[#c7aeef] to-[#ff65c5]"
-          animate={{ 
-            x: ["0%", "100%", "0%"],
-          }}
-          transition={{ 
-            duration: 8, 
-            ease: "linear", 
-            repeat: Infinity 
-          }}
-          style={{ width: "200%" }}
-        />
+      <div className="absolute left-0 right-0 bottom-0 h-[1px]">
+        <div className="w-full h-full bg-gradient-to-r from-[#ff65c5] via-[#c7aeef] to-[#ff65c5]" />
       </div>
     </motion.header>
   )
