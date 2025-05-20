@@ -81,13 +81,13 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
         <div className="text-center max-w-md p-8">
           <h1 className="text-2xl font-bold mb-4 text-[#FF5CB1]">Oops!</h1>
           <p className="text-lg mb-6">{error || "This listing could not be found"}</p>
-          <Link
-            href="/feed"
-            className="inline-flex items-center px-6 py-3 rounded-full bg-[#FF5CB1] text-white font-medium hover:bg-opacity-90 transition-colors"
+          <button
+            onClick={() => router.back()}
+            className="inline-flex items-center text-sm text-white/70 hover:text-white transition-colors"
           >
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            Back to Feed
-          </Link>
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            Back
+          </button>
         </div>
       </div>
     )

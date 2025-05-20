@@ -8,6 +8,7 @@ type UserProfile = {
   email: string;
   biography: string;
   age: number;
+  profilePic: string;
 };
 
 type UserContextType = {

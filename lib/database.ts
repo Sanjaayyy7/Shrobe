@@ -1,5 +1,6 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Listing, ListingImage, ListingTag, ListingAvailability, Wishlist, Booking, Review } from './types';
+import { supabase } from './supabase';
 
 // Initialize Supabase client
 const createClient = () => createClientComponentClient();
@@ -267,14 +268,17 @@ export async function getListingById(id: string) {
     if (data.user_id) {
       try {
         const { data: user, error: userError } = await supabase
-          .from('User')
-          .select('id, user_name, full_name')
+          .from('profile')
+          .select('*')
           .eq('id', data.user_id)
           .single();
         if (userError) {
           console.error('Error fetching user profile:', userError);
         } else if (user) {
-          userProfile = { user_name: user.user_name, full_name: user.full_name };
+          userProfile = { 
+            user_name: user.user_name, 
+            full_name: user.full_name, 
+            profile_picture_url: user.profile_picture_url };
         }
       } catch (err) {
         console.error('Exception fetching user profile:', err);
@@ -831,103 +835,24 @@ async function setupStoragePolicies(bucketName: string) {
 }
 
 // File upload helper
-export async function uploadImage(file: File, path: string) {
-  const supabase = createClient();
-  
-  try {
-    // Check if user is authenticated
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-    
-    if (authError || !session) {
-      throw new Error('You must be logged in to upload images');
-    }
-    
-    // Extract listing ID from path for logging
-    const listingId = path.split('/').pop();
-    console.log(`Uploading image for listing ID: ${listingId}`);
-    
-    // Generate a unique file name with extension and include listing ID
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${listingId}_${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-    const filePath = `${path}/${fileName}`;
-    
-    console.log(`Uploading image to path: ${filePath}`);
-    
-    // First try to check if the listings bucket exists
-    try {
-      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-      
-      if (bucketsError) {
-        console.error('Error listing buckets:', bucketsError);
-      } else if (buckets) {
-        const bucketExists = buckets.some(bucket => bucket.name === 'listings');
-        
-        if (!bucketExists) {
-          console.log('Listings bucket does not exist, attempting to create it');
-          const { error: createError } = await supabase.storage.createBucket('listings', {
-            public: true,
-            fileSizeLimit: 5242880 // 5MB
-          });
-          
-          if (createError) {
-            console.error('Failed to create bucket:', createError);
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Unable to check/create bucket:', e);
-      // Continue anyway, as the bucket might exist
-    }
-    
-    // Try to upload the file
-    const { data, error } = await supabase.storage
-      .from('listings')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: true
-      });
-    
-    if (error) {
-      // Check if this is an RLS error (row-level security)
-      if (error.message?.includes('row-level security') || error.message?.includes('permission denied')) {
-        console.warn('Storage permission issue detected. This is a configuration issue, not an application error.');
-        console.info('To fix this: 1) Use the Fix Storage Button in the UI, or 2) Set up proper RLS policies in your Supabase dashboard');
-        
-        // Since we can't use service role in client side, use public URLs instead
-        // Fall back to using placeholder images from Unsplash or similar services
-        const placeholderImages = [
-          'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?q=80&w=3005&auto=format&fit=crop',
-          'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?q=80&w=2787&auto=format&fit=crop',
-          'https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?q=80&w=2835&auto=format&fit=crop'
-        ];
-        
-        // Return a random placeholder image
-        const randomIndex = Math.floor(Math.random() * placeholderImages.length);
-        console.info('Using placeholder image as fallback');
-        
-        return placeholderImages[randomIndex];
-      }
-      
-      throw error;
-    }
-    
-    // Get the public URL
-    const { data: publicUrlData } = supabase.storage
-      .from('listings')
-      .getPublicUrl(filePath);
-    
-    console.log('Public URL data:', publicUrlData);
-    
-    if (!publicUrlData || !publicUrlData.publicUrl) {
-      throw new Error('Failed to get public URL for uploaded image');
-    }
-    
-    // Return the fully qualified public URL
-    return publicUrlData.publicUrl;
-  } catch (error) {
-    console.error('Exception in uploadImage:', error);
-    throw error;
+export async function uploadImage(file: File, path: string): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from("profile-pics") // nombre del bucket
+    .upload(path, file, {
+      cacheControl: "3600",
+      upsert: true, // reemplaza si ya existe
+    })
+
+  if (error) {
+    throw new Error(error.message)
   }
+
+  // Obtener la URL pública (si es bucket público)
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from("profile-pics").getPublicUrl(path)
+
+  return publicUrl
 }
 
 // Delete storage files associated with a listing

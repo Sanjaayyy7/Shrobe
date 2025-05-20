@@ -125,7 +125,7 @@ export default function ListingGrid({
       {showFilters && (
         <div className="mb-8">
           {/* Category filters */}
-          <div className="relative mb-6">
+          {/*<div className="relative mb-6">
             <div className="flex items-center gap-2 mb-4">
               <Filter className="w-4 h-4 text-[#FF5CB1]" />
               <h3 className="text-white font-medium">Filter By Category</h3>
@@ -148,7 +148,7 @@ export default function ListingGrid({
                 ))}
               </div>
             </div>
-          </div>
+          </div>*/}
           
           {/* View toggle and results count */}
           <div className="flex justify-between items-center mb-6">

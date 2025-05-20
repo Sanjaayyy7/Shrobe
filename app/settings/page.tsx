@@ -7,6 +7,8 @@ import Link from "next/link"
 import { ChevronLeft, Save } from "lucide-react"
 import Header from "@/components/feed/header"
 import { supabase } from "@/lib/supabase"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { uploadImage } from "@/lib/database"
 
 
 function calculateAge(dateString: string): number {
@@ -47,16 +49,17 @@ export default function SettingsPage() {
     email: "",
     biography: "",
     age: "",
-    dateOfBirth: ""
+    dateOfBirth: "",
+    profile_picture_url: ""
   })
   const [originalUsername, setOriginalUsername] = useState("")
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [saveError, setSaveError] = useState("")
   const [usernameError, setUsernameError] = useState("")
   const [checkingUsername, setCheckingUsername] = useState(false)
-  const [dateOfBirth, setDateOfBirth] = useState("")
-  const [username, setUsername] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [profilePicFile, setProfilePicFile] = useState<File | null>(null)
+  const [profilePicPreview, setProfilePicPreview] = useState<string>("")
 
   useEffect(() => {
 
@@ -93,7 +96,9 @@ export default function SettingsPage() {
         biography: profileData.biography || "",
         age: profileData.age || "",
         dateOfBirth: profileData.date_of_birth || "",
+        profile_picture_url: profileData.profile_picture_url || ""
       })
+      setProfilePicPreview(profileData.profile_picture_url || "")
       setLoading(false)
     }
 
@@ -105,6 +110,13 @@ export default function SettingsPage() {
     setFormData(prev => ({ ...prev, [name]: value }))
     setSaveSuccess(false)
     setSaveError("")
+  }
+
+  const handleProfilePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setProfilePicFile(e.target.files[0])
+      setProfilePicPreview(URL.createObjectURL(e.target.files[0]))
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -121,7 +133,7 @@ export default function SettingsPage() {
       return
     }
 
-    const age = calculateAge(dateOfBirth)
+    const age = calculateAge(formData.dateOfBirth)
 
     if (age < 10 || age > 100) {
       setSaveError("Age must be between 10 and 100 years")
@@ -129,17 +141,28 @@ export default function SettingsPage() {
       return
     }
 
-    if (!verifyUsername(username)) {
+    if (!verifyUsername(formData.username)) {
       setError("Username must contain only letters and numbers")
       setLoading(false)
       return
     }
 
-    const exists = await usernameExists(username)
-    if (exists) {
+    const exists = await usernameExists(formData.username)
+    if (exists && formData.username !== originalUsername) {
       setError("This username is already taken")
       setLoading(false)
       return
+    }
+
+    let profile_picture_url = formData.profile_picture_url || ""
+    if (profilePicFile) {
+      try {
+        profile_picture_url = await uploadImage(profilePicFile, `profile/${user.id}`)
+      } catch (err) {
+        setSaveError("Failed to upload profile picture")
+        setSaving(false)
+        return
+      }
     }
 
     const { error } = await supabase
@@ -149,6 +172,7 @@ export default function SettingsPage() {
         user_name: formData.username,
         biography: formData.biography,
         age: age,
+        profile_picture_url
       })
       .eq("id", user.id)
 
@@ -157,6 +181,7 @@ export default function SettingsPage() {
       console.error("Update error:", error)
     } else {
       setSaveSuccess(true)
+      setProfilePicFile(null)
     }
 
     setSaving(false)
@@ -203,6 +228,22 @@ export default function SettingsPage() {
                 </div>
               )}
 
+              <div className="flex flex-col items-center gap-2">
+                <Avatar className="w-24 h-24">
+                  <AvatarImage src={profilePicPreview || formData.profile_picture_url || ""} />
+                  <AvatarFallback className="text-3xl font-bold text-white/60">
+                    {formData.fullName?.charAt(0)?.toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <label className="mt-2 cursor-pointer text-pink-400 hover:underline">
+                  Change photo
+                  <input type="file" accept="image/*" className="hidden" onChange={handleProfilePicChange} />
+                </label>
+                {profilePicFile && (
+                  <span className="text-xs text-gray-400">{profilePicFile.name}</span>
+                )}
+              </div>
+
               <div>
                 <label htmlFor="fullName" className="block text-sm font-medium text-gray-300 mb-1">Full Name</label>
                 <input
@@ -242,8 +283,9 @@ export default function SettingsPage() {
               <input
                 type="date"
                 placeholder="Date of Birth"
-                value={dateOfBirth}
-                onChange={(e) => setDateOfBirth(e.target.value)}
+                value={formData.dateOfBirth}
+                name="dateOfBirth"
+                onChange={handleChange}
                 className="w-full px-4 py-3 rounded-lg bg-black/40 border border-white/20 text-white placeholder-gray-400"
               />
 

@@ -74,13 +74,13 @@ export default function CreateListingPage() {
       <div className="container mx-auto px-4 py-12">
         {/* Header */}
         <div className="mb-8">
-          <Link
-            href="/feed"
-            className="inline-flex items-center text-sm text-white/70 hover:text-white transition-colors mb-4"
-          >
-            <ChevronLeft className="w-4 h-4 mr-1" />
-            Back to Feed
-          </Link>
+        <button
+          onClick={() => router.back()}
+          className="inline-flex items-center text-sm text-white/70 hover:text-white transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4 mr-1" />
+          Back
+        </button>
           
           <h1 className="text-3xl font-bold bg-gradient-to-r from-[#ff65c5] to-[#c7aeef] bg-clip-text text-transparent">
             Create New Listing

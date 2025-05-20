@@ -23,7 +23,7 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [user, setUser] = useState<any>(null)
-  const [userName, setUserName] = useState("")
+  const [userProfile, setUserProfile] = useState({ fullName: "", username: "" })
   const [userNameUpdated, setUserNameUpdated] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
@@ -38,7 +38,7 @@ export default function Header() {
         if (cachedUserData) {
           const userData = JSON.parse(cachedUserData)
           if (userData.fullName) {
-            setUserName(userData.fullName)
+            setUserProfile({ fullName: userData.fullName, username: userData.username })
             setUserNameUpdated(true)
           }
         }
@@ -58,14 +58,12 @@ export default function Header() {
           // Get display name from user metadata or email
           const fullName = data.session.user.user_metadata?.full_name
           const email = data.session.user.email
+          const userName = data.session.user.user_metadata?.user_name || email?.split('@')[0] || "";
           
           if (fullName) {
-            setUserName(fullName)
-          } else if (email) {
-            // Use part before @ in email as fallback
-            setUserName(email.split('@')[0])
+            setUserProfile({ fullName: fullName, username: userName })
           } else {
-            setUserName("User")
+            setUserProfile({ fullName: "Unknown User", username: "" })
           }
           
           // Update localStorage with user data
@@ -82,7 +80,10 @@ export default function Header() {
     const handleProfileUpdate = (event: CustomEvent<{fullName?: string, username?: string}>) => {
       console.log("Header received profile update event:", event.detail)
       if (event.detail.fullName) {
-        setUserName(event.detail.fullName)
+        setUserProfile({ 
+          fullName: event.detail.fullName || "", 
+          username: event.detail.username || "" 
+        })
         setUserNameUpdated(true)
       }
     }
@@ -98,7 +99,7 @@ export default function Header() {
   const saveUserProfileToLocalStorage = (userData: any) => {
     const profileData = {
       fullName: userData.user_metadata?.full_name || "",
-      username: userData.user_metadata?.user_name || userData.email?.split('@')[0] || "",
+      username: userData.user_metadata?.user_name || "",
       email: userData.email || ""
     }
     
@@ -180,7 +181,7 @@ export default function Header() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.3 }}
             >
-              Hi, <span className="text-white">{userName}</span>
+              Hi, <span className="text-white">{userProfile.username}</span>
             </motion.p>
           </div>
           
@@ -268,8 +269,7 @@ export default function Header() {
                     transition={{ duration: 0.2 }}
                   >
                     <div className="p-3 border-b border-white/10">
-                      <p className="text-sm font-medium text-white">{userName}</p>
-                      <p className="text-xs text-gray-400">@{user?.email?.split('@')[0] || "username"}</p>
+                      <p className="text-sm text-gray-400">@{userProfile.username}</p>
                     </div>
                     <div className="py-1">
                       <Link 

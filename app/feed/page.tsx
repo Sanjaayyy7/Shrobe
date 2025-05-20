@@ -295,8 +295,8 @@ export default function FeedPage() {
           {/* User Avatar Stories */}
           <div className="mb-12">
             {/*<UserAvatarStories />*/}
-          </div>
-          
+      </div>
+      
           {/* Featured Closets */}
           <div className="mb-12">
             {/*<UserClosetHighlights />*/}
@@ -321,7 +321,7 @@ export default function FeedPage() {
         </div>
         
         {/* Footer Navigation */}
-        <div className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-md border-t border-white/10 py-3 px-4 z-40">
+        {/*<div className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-md border-t border-white/10 py-3 px-4 z-40">
           <div className="container mx-auto">
             <div className="flex justify-around items-center">
               <Link href="/feed" className="flex flex-col items-center text-[#FF5CB1]">
@@ -346,7 +346,7 @@ export default function FeedPage() {
               </Link>
             </div>
           </div>
-        </div>
+        </div>*/}
       </div>
     </>
   )

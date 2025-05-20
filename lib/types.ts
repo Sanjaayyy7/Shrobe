@@ -1,9 +1,10 @@
 export interface User {
   id: string;
   mail: string;
-  full_name?: string;
+  full_name: string;
   user_name: string;
   created_at: string;
+  profile_picture_url: string;
 }
 
 export type ListingType = 'Rent' | 'Buy' | 'Sell' | 'Trade';

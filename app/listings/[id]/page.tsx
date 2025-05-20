@@ -1017,13 +1017,13 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
         <div className="text-center max-w-md p-8">
           <h1 className="text-2xl font-bold mb-4 text-[#FF5CB1]">Oops!</h1>
           <p className="text-lg mb-6">{error || "This listing could not be found"}</p>
-          <Link
-            href="/feed"
-            className="inline-flex items-center px-6 py-3 rounded-full bg-[#FF5CB1] text-white font-medium hover:bg-opacity-90 transition-colors"
+          <button
+            onClick={() => router.back()}
+            className="inline-flex items-center text-sm text-white/70 hover:text-white transition-colors"
           >
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            Back to Feed
-          </Link>
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            Back
+          </button>
         </div>
       </div>
     )
@@ -1200,12 +1200,12 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                   {/* Seller card - attractive, clickable profile */}
                   <div 
                     className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-xl overflow-hidden hover:shadow-[0_0_20px_rgba(255,92,177,0.15)] transition-all cursor-pointer"
-                    onClick={() => router.push(`/profile/${listing.user_id}`)}
+                    onClick={() => router.push(`/other_profile/${listing.user_id}`)}
                   >
                     <div className="p-5">
                       <div className="flex items-center gap-4">
                         <Avatar className="w-14 h-14 border-2 border-[#FF5CB1]">
-                  <AvatarImage src="" />
+                  <AvatarImage src={listing.user?.profile_picture_url || ''} />
                           <AvatarFallback className="bg-gray-700 text-white text-lg">
                     {listing.user?.full_name?.charAt(0) || listing.user?.user_name?.charAt(0) || 'U'}
                   </AvatarFallback>
@@ -1216,23 +1216,15 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
                               <p className="font-semibold text-lg text-white">
                     {listing.user?.full_name || listing.user?.user_name || 'Unknown User'}
                               </p>
-                              <div className="flex items-center text-yellow-400 mt-1">
+                             {/*} <div className="flex items-center text-yellow-400 mt-1">
                                 <Star className="w-4 h-4 fill-yellow-400 mr-1" />
                                 <Star className="w-4 h-4 fill-yellow-400 mr-1" />
                                 <Star className="w-4 h-4 fill-yellow-400 mr-1" />
                                 <Star className="w-4 h-4 fill-yellow-400 mr-1" />
                                 <Star className="w-4 h-4 fill-yellow-400 mr-1" />
                                 <span className="text-sm text-gray-300 ml-1">5.0 (12)</span>
+                  </div>*/}
                   </div>
-                  </div>
-                  <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                router.push(`/messages/${listing.user?.id}`);
-                              }}
-                              className="bg-[#FF5CB1] hover:bg-[#ff3d9f] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                    Message
-                  </button>
                           </div>
                         </div>
               </div>

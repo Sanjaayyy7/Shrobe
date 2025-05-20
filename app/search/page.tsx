@@ -6,11 +6,12 @@ import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
+import { getListings } from "@/lib/database"
+import { Listing } from '@/lib/types'
 
 export default function SearchPage() {
   const [query, setQuery] = useState('')
-  const [users, setUsers] = useState<any[]>([])
-  const [clothes, setClothes] = useState<any[]>([])
+  const [results, setResults] = useState<Listing[]>([])
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -18,8 +19,7 @@ export default function SearchPage() {
       if (query.trim().length > 1) {
         handleSearch(query)
       } else {
-        setUsers([])
-        setClothes([])
+        setResults([])
       }
     }, 300)
     return () => clearTimeout(delayDebounce)
@@ -27,26 +27,8 @@ export default function SearchPage() {
 
   const handleSearch = async (text: string) => {
     setLoading(true)
-
-    // Buscar usuarios
-    const { data: usersData, error: userError } = await supabase
-      .from('profiles') // tabla de usuarios
-      .select('*')
-      .ilike('username', `%${text}%`)
-
-    // Buscar ropa
-    const { data: clothesData, error: clothesError } = await supabase
-      .from('clothes') // cambia por 'posts' si tu tabla de ropa se llama así
-      .select('*')
-      .ilike('title', `%${text}%`) // o 'description' si buscas por descripción
-
-    if (userError || clothesError) {
-      console.error(userError || clothesError)
-    } else {
-      setUsers(usersData || [])
-      setClothes(clothesData || [])
-    }
-
+    const listings = await getListings({ searchQuery: text })
+    setResults(listings)
     setLoading(false)
   }
 
@@ -66,7 +48,7 @@ export default function SearchPage() {
         <div className="flex justify-center">
             <input
                 type="text"
-                placeholder="Search users or clothes..."
+                placeholder="Search anything..."
                 className="w-[80%] bg-neutral-900 text-white border border-neutral-700 px-4 py-2 rounded
                         mt-2 mb-4 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                 value={query}
@@ -74,64 +56,45 @@ export default function SearchPage() {
             />
         </div>
 
-
       {loading && <p className="text-center text-neutral-400">Searching...</p>}
 
-      {/* Usuarios */}
-      {users.length > 0 && (
-        <>
-          <h2 className="text-xl font-semibold mb-2">Users</h2>
-          <div className="space-y-4 mb-8">
-            {users.map((user) => (
-              <motion.div
-                key={user.id}
-                className="p-4 bg-neutral-800 rounded flex items-center gap-4"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              >
-                <Image
-                  src={user.avatar_url || '/images/default-avatar.png'}
-                  alt="avatar"
-                  width={40}
-                  height={40}
-                  className="rounded-full object-cover"
-                />
-                <div>
-                  <p className="text-lg font-semibold">{user.username}</p>
-                  <p className="text-sm text-neutral-400">{user.email}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        {results.map((listing) => {
+          const imageUrl = listing.images?.[0]?.image_url || "/placeholder.jpg"
+          const username = listing.user?.user_name || "unknown"
+          const avatar = listing.user?.profile_picture_url
+
+          return (
+            <Link 
+              key={listing.id} 
+              href={`/listings/${listing.id}`} 
+              className="relative group block w-full h-64 overflow-hidden rounded-xl border border-white/10"
+            >
+              <Image 
+                src={imageUrl}
+                alt={listing.title}
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+
+              {/* Overlay */}
+              <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-3 py-2 flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center text-sm text-white">
+                  {avatar ? (
+                    <img src={avatar} alt={username} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{username.charAt(0).toUpperCase()}</span>
+                  )}
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        </>
-      )}
+                <span className="text-white text-xs font-medium truncate">@{username}</span>
+              </div>
+            </Link>
+          )
+        })}
+      </div>
 
-      {/* Ropa */}
-      {clothes.length > 0 && (
-        <>
-          <h2 className="text-xl font-semibold mb-2">Clothes</h2>
-          <div className="grid grid-cols-3 gap-2">
-            {clothes.map((item, index) => (
-              <motion.div
-                key={item.id}
-                className="relative aspect-square overflow-hidden rounded"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <Image
-                  src={item.image_url || '/images/fallback.jpg'}
-                  alt={item.title || 'Clothing item'}
-                  fill
-                  className="object-cover hover:scale-105 transition-transform duration-300"
-                />
-              </motion.div>
-            ))}
-          </div>
-        </>
-      )}
 
-      {!loading && users.length === 0 && clothes.length === 0 && query.trim().length > 1 && (
+      {!loading && results.length === 0 && query.trim().length > 1 && (
         <p className="text-center mt-10 text-neutral-500">No results found</p>
       )}
     </div>

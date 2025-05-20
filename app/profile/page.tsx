@@ -37,7 +37,7 @@ export default function ProfilePage() {
   const [userProfile, setUserProfile] = useState({
     fullName: '',
     username: '',
-    profilePic: '',
+    profile_picture_url: '',
     biography: '',
     age: '',
   })
@@ -77,7 +77,7 @@ export default function ProfilePage() {
           setUserProfile({
             fullName: parsed.fullName || user.user_metadata?.full_name || "User",
             username: parsed.username || user.user_metadata?.user_name || user.email?.split('@')[0] || "username",
-            profilePic: user.user_metadata?.avatar_url || "",
+            profile_picture_url: user.user_metadata?.profile_picture_url || "",
             biography: parsed.biography || "",
             age: parsed.age || ""
           })
@@ -88,7 +88,7 @@ export default function ProfilePage() {
 
       // Cargar desde Supabase (tabla user)
       const { data: userData, error } = await supabase
-        .from("user")
+        .from("profile")
         .select("*")
         .eq("id", user.id)
         .single()
@@ -99,14 +99,16 @@ export default function ProfilePage() {
           fullName: userData.full_name || prev.fullName,
           username: userData.user_name || prev.username,
           biography: userData.biography || prev.biography,
-          age: userData.age?.toString() || prev.age
+          age: userData.age?.toString() || prev.age,
+          profile_picture_url: userData.profile_picture_url || prev.profile_picture_url
         }))
         localStorage.setItem("userProfile", JSON.stringify({
           fullName: userData.full_name,
           username: userData.user_name,
           email: userData.mail,
           biography: userData.biography,
-          age: userData.age?.toString()
+          age: userData.age?.toString(),
+          profile_picture_url: userData.profile_picture_url
         }))
       }
     } catch (err) {
@@ -178,10 +180,18 @@ export default function ProfilePage() {
             <div className="flex flex-col md:flex-row px-6 py-6 relative">
               {/* Avatar */}
               <div className="absolute -top-16 left-6 md:left-6 md:relative md:top-auto border-4 border-black rounded-full overflow-hidden">
-                <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-700 flex items-center justify-center rounded-full">
-                  <div className="text-3xl font-bold text-white/60">
-                    {userProfile.fullName.charAt(0).toUpperCase()}
-                  </div>
+                <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-700 flex items-center justify-center rounded-full overflow-hidden">
+                  {userProfile.profile_picture_url ? (
+                    <img
+                      src={userProfile.profile_picture_url}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="text-3xl font-bold text-white/60">
+                      {userProfile.fullName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -225,7 +235,7 @@ export default function ProfilePage() {
                     </p>
                   </div>
                   
-                  <div className="flex space-x-6">
+                  {/*<div className="flex space-x-6">
                     <div>
                       <span className="text-white font-bold">42</span>
                       <span className="text-gray-400 ml-1">Items</span>
@@ -238,7 +248,7 @@ export default function ProfilePage() {
                       <span className="text-white font-bold">96</span>
                       <span className="text-gray-400 ml-1">Following</span>
                     </div>
-                  </div>
+                  </div>*/}
                 </div>
               </div>
             </div>
