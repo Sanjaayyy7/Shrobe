@@ -3,15 +3,15 @@ import Image from "next/image"
 const team = [
   {
     name: "Sanjay M.",
-    role: "Founder & Product Lead",
+    role: "Founder",
     image: "/images/team-placeholder-1.jpg",
     blurb: "Dreamer, builder, and fashion enthusiast. Sanjay leads the vision and product direction at Shrobe.",
   },
   {
-    name: "Alex Kim",
-    role: "Engineering",
+    name: "Jimena Cabrera",
+    role: "Founder",
     image: "/images/team-placeholder-2.jpg",
-    blurb: "Turning ideas into code and making sure everything runs smoothly.",
+    blurb: "Jimena is a Computer Science and Computer Engineering student at Universidad Carlos III de Madrid, who's doing an exchange year at UC Davis. She leads the technical and product vision of Shrobes, designing and building the platform from the ground up — including authentication, user profiles, messaging, listings, and real-time updates. She translates user needs into intuitive features, manages all Supabase integration, and ensures a smooth product experience end to end. Beyond code, she also drives platform strategy, iterates fast based on user feedback, and keeps the team moving forward.",
   },
   {
     name: "Jamie Lee",
